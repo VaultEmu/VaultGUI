@@ -1,2 +1,2 @@
-# Vault
-Multi System Emulator written in c#
+# Vault GUI
+Multi System Emulator frontend written in c# to run Vault Emulation cores
