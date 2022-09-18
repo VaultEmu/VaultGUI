@@ -56,7 +56,7 @@ public class ImGuiRenderer : IDisposable
 
         var context = ImGui.CreateContext();
         ImGui.SetCurrentContext(context);
-        
+
         ImGui.GetIO().Fonts.AddFontDefault();
         ImGui.GetIO().BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
 

@@ -7,14 +7,9 @@
         <Nullable>enable</Nullable>
         <RootNamespace>Vault</RootNamespace>
         <Version>0.1.0</Version>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <ApplicationIcon>Assets\VaultIcon.ico</ApplicationIcon>
     </PropertyGroup>
-
-    <ItemGroup>
-      <PackageReference Include="ImGui.NET" Version="1.87.3" />
-      <PackageReference Include="Veldrid" Version="4.8.0" />
-      <PackageReference Include="Veldrid.SPIRV" Version="1.0.15" />
-      <PackageReference Include="Veldrid.StartupUtilities" Version="4.8.0" />
-    </ItemGroup>
 
     <ItemGroup>
         <EmbeddedResource Include="Shaders/GLSL/imgui-vertex.glsl" LogicalName="imgui-vertex.glsl" />
@@ -25,6 +20,24 @@
         <EmbeddedResource Include="Shaders/SPIR-V/imgui-frag.spv" LogicalName="imgui-frag.spv" />
         <EmbeddedResource Include="Shaders/Metal/imgui-vertex.metallib" LogicalName="imgui-vertex.metallib" />
         <EmbeddedResource Include="Shaders/Metal/imgui-frag.metallib" LogicalName="imgui-frag.metallib" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\VaultCoreAPI\VaultCoreAPI.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="McMaster.NETCore.Plugins" Version="1.4.0" />
+      <PackageReference Include="StbImageSharp" Version="2.27.11" />
+      <PackageReference Include="Veldrid" Version="4.8.0" />
+      <PackageReference Include="Veldrid.SPIRV" Version="1.0.15" />
+      <PackageReference Include="Veldrid.StartupUtilities" Version="4.8.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Assets\*.*">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 

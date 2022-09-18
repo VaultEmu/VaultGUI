@@ -1,31 +1,24 @@
-using Vault.UI;
 using Veldrid;
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
 
 namespace Vault;
 
-public static class VaultGui
+public class VaultGui : IGuiApplication
 {
-    private static Sdl2Window _window = null!;
-    private static GraphicsDevice _graphicsDevice = null!;
-    private static UIController _uiController = null!;
+    private readonly Sdl2Window _window;
+    private readonly GraphicsDevice _graphicsDevice;
+    private readonly ImGuiUiController _imGuiUiController;
+    private readonly TimeProvider _timeProvider;
+    private readonly CommandList _mainCommandList;
     
-    private static CommandList _mainCommandList = null!;
-    private static HighResTimer _highResTimer = null!;
-    private static AverageTimeCounter _avgFpsTimer = null!;
+    private IGuiApplication.ApplicationWindowMode? _nextWindowModeToSet;
     
-    private static ulong _prevDeltaTimeSample;
-    private static bool _isInitialised;
-    
-    public static void Initialise()
+    public VaultGui()
     {
-        if(_isInitialised)
-        {
-            throw new InvalidOperationException("VaultGUI already initialised");
-        }
+        SubsystemController.RegisterSubsystem(this);
         
-        var vsync = true;
+        var vsync = false;
 #if DEBUG
         var debugGraphicsDevice = true;
 #else
@@ -47,6 +40,7 @@ public static class VaultGui
         
         var preferredBackend = VeldridStartup.GetPlatformDefaultBackend();
 
+        // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
         Sdl2Native.SDL_Init(SDLInitFlags.Timer | SDLInitFlags.Video);
         
         if(preferredBackend == GraphicsBackend.OpenGL || 
@@ -70,23 +64,13 @@ public static class VaultGui
 
         _window.Resized += OnWindowOnResized;
         
-        _uiController = new UIController(_graphicsDevice, _window);
+        _timeProvider = new TimeProvider();
+        _imGuiUiController = new ImGuiUiController(_graphicsDevice, _window);
         _mainCommandList = _graphicsDevice.ResourceFactory.CreateCommandList();
-
-        _highResTimer = new HighResTimer();
-        _prevDeltaTimeSample = _highResTimer.Sample;
-        _avgFpsTimer = new AverageTimeCounter(60);
-        
-        _isInitialised = true;
     }
 
-    public static void Run()
+    public void Run()
     {
-        if(_isInitialised == false)
-        {
-            throw new InvalidOperationException("Vault GUI is not initialised. Call Initialise() before Run()");
-        }
-        
         try
         {
             while (_window.Exists)
@@ -97,13 +81,15 @@ public static class VaultGui
                     break;
                 }
 
-                UpdateTimers(out var deltaTime, out var avgDeltaTime);
+                _timeProvider.Update();
                 
-                UpdateTitle(avgDeltaTime);
+                UpdateTitle();
 
-                _uiController.UpdateUi(deltaTime, snapshot);
+                _imGuiUiController.UpdateUi(snapshot);
 
                 Render();
+                
+                UpdateWindowModeIfNeeded();
             }
         }
         finally
@@ -111,51 +97,76 @@ public static class VaultGui
             Cleanup();
         }
     }
-
-    private static void UpdateTimers(out float deltaTimeThisFrame, out float avgDeltaTime)
+    
+    public void SetApplicationWindowMode(IGuiApplication.ApplicationWindowMode newWindowMode)
     {
-        var sample = _highResTimer.Sample;
+        _nextWindowModeToSet = newWindowMode;
+    }
+    private void UpdateWindowModeIfNeeded()
+    {
+        if(_nextWindowModeToSet == null)
+        {
+            return;
+        }
+
+        switch(_nextWindowModeToSet)
+        {
+            case IGuiApplication.ApplicationWindowMode.Normal:
+                _window.WindowState = WindowState.Normal;
+                break;
+            case IGuiApplication.ApplicationWindowMode.FullScreen:
+                _window.WindowState = WindowState.FullScreen;
+                break;
+            case IGuiApplication.ApplicationWindowMode.Maximized:
+                _window.WindowState = WindowState.Maximized;
+                break;
+            case IGuiApplication.ApplicationWindowMode.Minimized:
+                _window.WindowState = WindowState.Minimized;
+                break;
+            case IGuiApplication.ApplicationWindowMode.BorderlessFullScreen:
+                _window.WindowState = WindowState.BorderlessFullScreen;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(_nextWindowModeToSet), _nextWindowModeToSet, null);
+        }
         
-        deltaTimeThisFrame = (float)(sample - _prevDeltaTimeSample) / _highResTimer.SampleFrequency;
-        avgDeltaTime = _avgFpsTimer.Update(deltaTimeThisFrame);
-        
-        _prevDeltaTimeSample = sample;
+        _nextWindowModeToSet = null;
     }
 
-    private static void OnWindowOnResized()
+    private void OnWindowOnResized()
     {
         _graphicsDevice.MainSwapchain.Resize((uint)_window.Width, (uint)_window.Height);
     }
-    
 
-    private static void UpdateTitle(float avgDeltaTime)
+    private void UpdateTitle()
     {
-        var fps = 1.0f / avgDeltaTime;
-        var ms = avgDeltaTime * 1000f;
+        var fps = _timeProvider.AverageFps;
+        var ms = _timeProvider.AverageDeltaTime * 1000f;
         _window.Title = $"Vault Gui - {ms:0.00} ms/frame ({fps:0.0} FPS)";
     }
 
-    private static void Render()
+    private void Render()
     {
         //Clear the backbuffer (TODO: any other rendering outside ui?)
         _mainCommandList.Begin();
         _mainCommandList.SetFramebuffer(_graphicsDevice.MainSwapchain.Framebuffer);
-        _mainCommandList.ClearColorTarget(0, new RgbaFloat(0.45f, 0.55f, 0.6f, 1f));
+        _mainCommandList.ClearColorTarget(0, new RgbaFloat(0.4f, 0.4f, 0.4f, 1f));
         _mainCommandList.End();
         _graphicsDevice.SubmitCommands(_mainCommandList);
-
         
-        _uiController.RenderUi();
+        _imGuiUiController.RenderUi();
 
         //And swap
         _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
     }
 
-    private static void Cleanup()
+    private void Cleanup()
     {
         _graphicsDevice.WaitForIdle();
         _mainCommandList.Dispose();
-        _uiController.Dispose();
+        _imGuiUiController.Dispose();
         _graphicsDevice.Dispose();
     }
+
+    
 }

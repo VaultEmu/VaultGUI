@@ -1,6 +1,10 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultGUI", "VaultGUI.csproj", "{AC7F86B3-C8C1-41FE-8284-167EFFF26375}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultGUI", "VaultGUI\VaultGUI.csproj", "{AC7F86B3-C8C1-41FE-8284-167EFFF26375}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultCoreAPI", "VaultCoreAPI\VaultCoreAPI.csproj", "{4467150E-5770-47C0-86CB-6AFE797CADE1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Cores", "Cores", "{EE724916-FB23-4AEB-8CAC-2AC9D18EEFD1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,5 +16,9 @@ Global
 		{AC7F86B3-C8C1-41FE-8284-167EFFF26375}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AC7F86B3-C8C1-41FE-8284-167EFFF26375}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AC7F86B3-C8C1-41FE-8284-167EFFF26375}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
