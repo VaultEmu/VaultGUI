@@ -1,0 +1,3 @@
+[submodule "VaultCoreAPI"]
+	path = VaultCoreAPI
+	url = ../Vault-VaultCoreAPI.git
