@@ -2,6 +2,7 @@ using ImGuiNET;
 
 namespace Vault;
 
+//Interface to implement to create a ImGui window for the Vault GUI application
 public interface IImguiGuiWindow : IDisposable
 {
     //Order Of Execution for functions

@@ -1,5 +1,12 @@
 namespace Vault;
 
+public class SubsystemResolver : ISubsystemResolver
+{
+    
+}
+
+
+
 //Use this to get access to various subsystems your emulation core may need
 public static class SubsystemController
 {
