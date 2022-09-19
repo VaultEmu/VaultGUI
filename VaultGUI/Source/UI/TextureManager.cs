@@ -195,7 +195,7 @@ public class TextureManager : ITextureManager
         }
     }
 
-    public ImGuiTextureRef GetImGuiTextureRefForTexture(Texture2D texture)
+    public ImGuiTextureRef GetOrCreateImGuiTextureRefForTexture(Texture2D texture)
     {
         var textureImpl = texture as Texture2DVeldridImpl;
             

@@ -5,91 +5,39 @@ namespace Vault;
 
 public class GameScreen : IImguiGuiWindow
 {
-    private const uint DEFAULT_INITIAL_WIDTH = 256;
-    private const uint DEFAULT_INITIAL_HEIGHT = 256;
-    
     private const int SCREEN_PADDING = 16;
 
-    private Texture2D _screenTexture = null!;
-    private ImGuiTextureRef _screenTextureImguiRef = null!;
-    
-    private TexturePixel[] _screenBuffer = null!;
-
-    private readonly TextureManager _textureManager;
-    private readonly ITimeProvider _timeProvider;
+    private readonly ITextureManager _textureManager;
     private readonly IImguiWindowManager _imguiWindowManager;
     private readonly IGuiApplication _guiApplication;
 
     private bool _pixelPerfectScaling = true;
     private bool _autoScale = true;
     private float _currentScale = 1.0f;
-
-    private readonly TexturePixel[] _splatPixelsTestA = new TexturePixel[256 * 64];
-    private readonly TexturePixel[] _splatPixelsTestB = new TexturePixel[80 * 80];
-    private readonly TexturePixel[] _splatPixelsTestLoaded;
-    private readonly uint _splatPixelsTestLoadedWidth;
-    private readonly uint _splatPixelsTestLoadedHeight;
     
+    private Texture2D? _textureToShowOnScreen;
+    private readonly Texture2D _testCardTexture;
+
     private bool _switchFullScreenMode;
-
-    public uint ScreenBackBufferWidth { get; private set; }
-    public uint ScreenBackBufferHeight { get; private set; }
     
-    public string WindowName => "Screen";
+    private Texture2D _textureToDraw => _textureToShowOnScreen ?? _testCardTexture;
+    
+    public string CustomWindowID => "Screen";
+    public string WindowTitle => $"Screen ({_textureToDraw.Width}x{_textureToDraw.Height}) - {_currentScale * 100.0f:0}%";
     public ImGuiWindowFlags WindowFlags => ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.MenuBar;
 
-    public GameScreen(uint backBufferWidth = DEFAULT_INITIAL_WIDTH, uint backBufferHeight = DEFAULT_INITIAL_HEIGHT)
+    public GameScreen()
     {
-        _textureManager = SubsystemController.GetSubsystem<TextureManager>();
-        _timeProvider = SubsystemController.GetSubsystem<ITimeProvider>();
+        _textureManager = SubsystemController.GetSubsystem<ITextureManager>();
         _imguiWindowManager = SubsystemController.GetSubsystem<IImguiWindowManager>();
         _guiApplication = SubsystemController.GetSubsystem<IGuiApplication>();
         
-        InitialiseScreenBufferData(backBufferWidth, backBufferHeight, true);
-
-        for (var index = 0; index < _splatPixelsTestA.Length; ++index)
-        {
-            _splatPixelsTestA[index] = new TexturePixel(0, 255, 255);
-        }
-
-        for (var index = 0; index < _splatPixelsTestB.Length; ++index)
-        {
-            _splatPixelsTestB[index] = new TexturePixel(255, 255, 0);
-        }
-
-        _splatPixelsTestLoaded = _textureManager.LoadTextureFromDiskAsPixelArray(@".\Assets\Debug.png",
-            out _splatPixelsTestLoadedWidth, out _splatPixelsTestLoadedHeight);
-        
-        //Temp Color update test
-        var timeSinceStartup = _timeProvider.TimeSinceStartup;
-        for (uint indexY = 0; indexY < ScreenBackBufferHeight; ++indexY)
-        {
-            for (uint indexX = 0; indexX < ScreenBackBufferWidth; ++indexX)
-            {
-                var offsetR = timeSinceStartup * 0.1f % 1.0f;
-                var offsetG = timeSinceStartup * 0.2f % 1.0f;
-
-                var r = (byte)(255 * (indexX / (float)ScreenBackBufferWidth - offsetR));
-                var g = (byte)(255 * (indexY / (float)ScreenBackBufferHeight - offsetG));
-
-                SetPixel(new TexturePixel
-                {
-                    R = r,
-                    G = g,
-                    B = 0,
-                    A = 255
-                }, indexX, indexY);
-            }
-        }
-
-        SetPixels(_splatPixelsTestA, 0, 20, 256, 64);
-        SetPixels(_splatPixelsTestB, 124, 163, 80, 80);
-        SetPixels(_splatPixelsTestLoaded, 10, 256 - (_splatPixelsTestLoadedHeight + 10), _splatPixelsTestLoadedWidth, _splatPixelsTestLoadedHeight);
+        _testCardTexture = _textureManager.LoadTextureFromDisk(@".\Assets\TestCard.png");
     }
-
-    public void SetScreenBackBufferSize(uint width, uint height)
+    
+    public void SetTextureToShowOnScreen(Texture2D texture)
     {
-        InitialiseScreenBufferData(width, height, false);
+        _textureToShowOnScreen = texture;
     }
 
     public void OnUpdate()
@@ -114,24 +62,19 @@ public class GameScreen : IImguiGuiWindow
     
     public void OnBeforeDrawImguiWindow()
     {
-        //Blit window data to texture
-        _screenTexture.StartWritingPixelsToTexture();
-        _screenTexture.WritePixelData(_screenBuffer, 0, 0, ScreenBackBufferWidth, ScreenBackBufferHeight);
-        _screenTexture.FinishWritingPixelsToTexture();
-        
         ImGui.PushStyleVar(ImGuiStyleVar.WindowMinSize, new Vector2(200, 200));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
     }
     
-    public void OnImguiGui()
+    public void OnDrawImGuiWindowContent()
     {
         var contentRectMin = ImGui.GetWindowContentRegionMin();
         var contentRectMax = ImGui.GetWindowContentRegionMax();
         
         CheckForFullScreenDoubleClick(contentRectMin, contentRectMax);
         
-        DrawScreenTexture(contentRectMax, contentRectMin);
+        DrawScreenTexture(contentRectMax, contentRectMin, _textureToDraw);
 
         //CB: Pop for Style vars done in OnBeforeDrawImguiWindow here - We need them popped before we do the menu
         ImGui.PopStyleVar(3);
@@ -139,15 +82,15 @@ public class GameScreen : IImguiGuiWindow
         DrawWindowMenuBar();
     }
 
-    private void DrawScreenTexture(Vector2 contentRectMax, Vector2 contentRectMin)
+    private void DrawScreenTexture(Vector2 contentRectMax, Vector2 contentRectMin, Texture2D textureToDraw)
     {
         var width = contentRectMax.X - contentRectMin.X;
         var height = contentRectMax.Y - contentRectMin.Y;
 
         if(_autoScale)
         {
-            var widthMul = (width - SCREEN_PADDING * 2) / ScreenBackBufferWidth;
-            var heightMul = (height - SCREEN_PADDING * 2) / ScreenBackBufferHeight;
+            var widthMul = (width - SCREEN_PADDING * 2) / textureToDraw.Width;
+            var heightMul = (height - SCREEN_PADDING * 2) / textureToDraw.Height;
 
             _currentScale = Math.Min(widthMul, heightMul);
         }
@@ -158,7 +101,7 @@ public class GameScreen : IImguiGuiWindow
         }
 
         //Calculate and draw screen texture
-        var imageSize = new Vector2(ScreenBackBufferWidth * _currentScale, ScreenBackBufferHeight * _currentScale);
+        var imageSize = new Vector2(textureToDraw.Width * _currentScale, textureToDraw.Height * _currentScale);
 
         var widthMargin = Math.Max(width - imageSize.X, SCREEN_PADDING * 2);
         var heightMargin = Math.Max(height - imageSize.Y, SCREEN_PADDING * 2);
@@ -167,7 +110,9 @@ public class GameScreen : IImguiGuiWindow
         var startY = contentRectMin.Y + ImGui.GetScrollY() + heightMargin * 0.5f;
 
         ImGui.SetCursorPos(new Vector2(startX, startY));
-        ImGui.Image(_screenTextureImguiRef.ImGuiRef, imageSize);
+        var imguiTextureRef = _textureManager.GetOrCreateImGuiTextureRefForTexture(textureToDraw);
+        
+        ImGui.Image(imguiTextureRef.ImGuiRef, imageSize);
 
         //Add dummy for right/bottom padding so scroll bars appear at correct point
         ImGui.Dummy(new Vector2(imageSize.X + SCREEN_PADDING * 2.0f, SCREEN_PADDING));
@@ -260,79 +205,14 @@ public class GameScreen : IImguiGuiWindow
         }
     }
 
-    public void OnAfterDrawImguiWindow()
+    public void OnAfterDrawImGuiWindow()
     {
-        
-    }
-
-    public void SetPixel(TexturePixel pixel, uint x, uint y)
-    {
-        if(x >= ScreenBackBufferWidth)
-        {
-            throw new ArgumentException("x should be less then ScreenBackBufferWidth");
-        }
-
-        if(y >= ScreenBackBufferHeight)
-        {
-            throw new ArgumentException("y should be less then ScreenBackBufferHeight");
-        }
-
-        var index = x + y * ScreenBackBufferWidth;
-
-        _screenBuffer[index] = pixel;
-    }
-
-    public void SetPixels(TexturePixel[] pixels, uint x, uint y, uint width, uint height)
-    {
-        if(x >= ScreenBackBufferWidth)
-        {
-            throw new ArgumentException("x should be less then ScreenBackBufferWidth");
-        }
-
-        if(y >= ScreenBackBufferHeight)
-        {
-            throw new ArgumentException("y should be less then ScreenBackBufferHeight");
-        }
-
-        if(x + width > ScreenBackBufferWidth)
-        {
-            throw new ArgumentException("x + width should be less then ScreenBackBufferWidth");
-        }
-
-        if(y + height > ScreenBackBufferHeight)
-        {
-            throw new ArgumentException("y + height should be less then ScreenBackBufferHeight");
-        }
-
-        TexturePixelUtils.DoPixelDataCopy(pixels, _screenBuffer, x, y, width, height, ScreenBackBufferWidth, ScreenBackBufferHeight);
+        //Nothing to do 
     }
 
     public void Dispose()
     {
-        _screenTexture.Dispose();
-    }
-
-    private void InitialiseScreenBufferData(uint width, uint height, bool calledFromConstructor)
-    {
-        //CB: will be null when called from constructor, always valid otherwise
-        if(calledFromConstructor == false)
-        {
-            _screenTexture.Dispose();
-        }
-
-        _screenTexture = _textureManager.CreateTexture(
-            width,
-            height,
-            TextureFormat.RGBA_32,
-            false,
-            true);
-        
-        _screenTextureImguiRef = _textureManager.GetImGuiTextureRefForTexture(_screenTexture);
-
-        _screenBuffer = new TexturePixel[width * height];
-
-        ScreenBackBufferWidth = width;
-        ScreenBackBufferHeight = height;
+        //Nothing to do
     }
 
     private float RoundZoomToNearestPixelPerfectSize(float currentScale)

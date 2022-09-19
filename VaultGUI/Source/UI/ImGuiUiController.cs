@@ -36,7 +36,7 @@ public class ImGuiUiController : IDisposable
         _textureManager = new TextureManager(_parentGraphicsDevice, _imGuiRenderer);
         
         _backgroundTexture = _textureManager.LoadTextureFromDisk(@".\Assets\VaultBg.png");
-        _backgroundTextureImGuiRef = _textureManager.GetImGuiTextureRefForTexture(_backgroundTexture);
+        _backgroundTextureImGuiRef = _textureManager.GetOrCreateImGuiTextureRefForTexture(_backgroundTexture);
         
         AddDefaultWindows();
     }

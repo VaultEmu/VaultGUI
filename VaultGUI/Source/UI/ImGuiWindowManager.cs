@@ -72,10 +72,13 @@ public class ImGuiWindowManager : IImguiWindowManager, IDisposable
             {
                 continue;
             }
-
-            var windowName = window.WindowName;
+            
+            var windowName = window.WindowTitle;
+            var windowID = window.CustomWindowID;
             var windowFlags = window.WindowFlags;
             
+            var fullWindowString = $"{windowName}###{windowID}";
+
             if(IsAnyWindowFullScreen)
             {
                 var viewport = ImGui.GetMainViewport();
@@ -87,17 +90,17 @@ public class ImGuiWindowManager : IImguiWindowManager, IDisposable
 
                 windowFlags |= ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoMove;
                 windowFlags &= ~ImGuiWindowFlags.MenuBar;
-                windowName += "(FullScreen)";
+                fullWindowString += "_FullScreen";
             }
             
             window.OnBeforeDrawImguiWindow();
             
-            if(ImGui.Begin(windowName, windowFlags))
+            if(ImGui.Begin(fullWindowString, windowFlags))
             {
-                window.OnImguiGui();
+                window.OnDrawImGuiWindowContent();
             }
             
-            window.OnAfterDrawImguiWindow();
+            window.OnAfterDrawImGuiWindow();
             
             if(IsAnyWindowFullScreen)
             {
