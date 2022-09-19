@@ -40,9 +40,5 @@
       </None>
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Source\Utils" />
-    </ItemGroup>
-
 
 </Project>
