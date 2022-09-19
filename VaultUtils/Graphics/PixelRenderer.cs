@@ -17,11 +17,11 @@ public class PixelRenderer : IDisposable
     private readonly ITextureManager _textureManager;
     
     public PixelRenderer(
+        ITextureManager textureManager,
         uint backBufferWidth = DEFAULT_INITIAL_BACKBUFFER_WIDTH,
         uint backBufferHeight = DEFAULT_INITIAL_BACKBUFFER_HEIGHT)
     {
-        _textureManager = SubsystemController.GetSubsystem<ITextureManager>();
-        
+        _textureManager = textureManager;
         InitialiseScreenBufferData(backBufferWidth, backBufferHeight, true);
     }
     

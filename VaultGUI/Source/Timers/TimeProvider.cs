@@ -25,7 +25,7 @@ public class TimeProvider : ITimeProvider
         _startupTimeSample = _prevDeltaTimeSample;
         _averageFpsTimer = new AverageTimeCounter(60);
         
-        SubsystemController.RegisterSubsystem(this);
+        GlobalSubsystems.RegisterSubsystem(this);
     }
     
     public void Update()

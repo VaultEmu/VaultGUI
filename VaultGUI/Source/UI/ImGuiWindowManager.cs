@@ -2,24 +2,24 @@ using ImGuiNET;
 
 namespace Vault;
 
-public class ImGuiWindowManager : IImguiWindowManager, IDisposable
+public class ImGuiWindowManager : IImGuiWindowManager, IDisposable
 {
-    private readonly List<IImguiGuiWindow> _subWindows = new List<IImguiGuiWindow>();
-    private IImguiGuiWindow? _fullscreenWindow;
+    private readonly List<IImGuiWindow> _subWindows = new List<IImGuiWindow>();
+    private IImGuiWindow? _fullscreenWindow;
     
     public bool IsAnyWindowFullScreen => _fullscreenWindow != null;
     
     public ImGuiWindowManager()
     {
-        SubsystemController.RegisterSubsystem(this);
+        GlobalSubsystems.RegisterSubsystem(this);
     }
     
-    public IImguiGuiWindow? GetFullscreenWindow()
+    public IImGuiWindow? GetFullscreenWindow()
     {
         return _fullscreenWindow;
     }
     
-    public void RegisterWindow(IImguiGuiWindow window)
+    public void RegisterWindow(IImGuiWindow window)
     {
         if(_subWindows.Contains(window))
         {
@@ -29,7 +29,7 @@ public class ImGuiWindowManager : IImguiWindowManager, IDisposable
         _subWindows.Add(window);
     }
     
-    public void UnregisterWindow(IImguiGuiWindow window)
+    public void UnregisterWindow(IImGuiWindow window)
     {
         if(_subWindows.Contains(window) == false)
         {
@@ -39,7 +39,7 @@ public class ImGuiWindowManager : IImguiWindowManager, IDisposable
         _subWindows.Remove(window);
     }
     
-    public void SetWindowAsFullscreen(IImguiGuiWindow window)
+    public void SetWindowAsFullscreen(IImGuiWindow window)
     {
         if(_subWindows.Contains(window) == false)
         {
@@ -93,7 +93,7 @@ public class ImGuiWindowManager : IImguiWindowManager, IDisposable
                 fullWindowString += "_FullScreen";
             }
             
-            window.OnBeforeDrawImguiWindow();
+            window.OnBeforeDrawImGuiWindow();
             
             if(ImGui.Begin(fullWindowString, windowFlags))
             {

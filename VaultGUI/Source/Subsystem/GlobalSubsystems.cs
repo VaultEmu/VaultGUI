@@ -2,17 +2,9 @@ namespace Vault;
 
 public class SubsystemResolver : ISubsystemResolver
 {
+    private readonly Dictionary<Type, ISubsystem> _subsystemLookup = new();
     
-}
-
-
-
-//Use this to get access to various subsystems your emulation core may need
-public static class SubsystemController
-{
-    private static readonly Dictionary<Type, ISubsystem> _subsystemLookup = new();
-
-    public static void RegisterSubsystem(ISubsystem subsystemToRegister)
+    public void RegisterSubsystem(ISubsystem subsystemToRegister)
     {
         //Add the concrete types
         AddConcreteTypeMappingForSubsystem(subsystemToRegister.GetType(), subsystemToRegister);
@@ -29,8 +21,8 @@ public static class SubsystemController
             AddConcreteTypeMappingForSubsystem(interfaceType, subsystemToRegister);
         }
     }
-
-    public static T GetSubsystem<T>() where T : ISubsystem
+    
+    public T GetSubsystem<T>() where T : ISubsystem
     {
         if(typeof(T) == typeof(ISubsystem))
         {
@@ -45,7 +37,7 @@ public static class SubsystemController
         return (T)subSystem;
     }
     
-    private static void AddConcreteTypeMappingForSubsystem(Type type, ISubsystem subsystem)
+    private void AddConcreteTypeMappingForSubsystem(Type type, ISubsystem subsystem)
     {
         if(_subsystemLookup.ContainsKey(type))
         {
@@ -54,5 +46,20 @@ public static class SubsystemController
         }
             
         _subsystemLookup.Add(type, subsystem);
+    }
+}
+
+
+
+//Use this to get access to various subsystems your emulation core may need
+public static class GlobalSubsystems
+{
+    private static readonly SubsystemResolver _globalSubsystemResolver = new SubsystemResolver();
+    
+    public static ISubsystemResolver Resolver => _globalSubsystemResolver;
+    
+    public static void RegisterSubsystem(ISubsystem subsystemToRegister)
+    {
+        _globalSubsystemResolver.RegisterSubsystem(subsystemToRegister);
     }
 }

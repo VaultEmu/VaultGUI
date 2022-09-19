@@ -25,7 +25,7 @@ public class ImGuiUiController : IDisposable
         _parentGraphicsDevice = graphicsDevice;
         _parentWindow = window;
         _imGuiRenderer = new ImGuiRenderer(graphicsDevice, graphicsDevice.MainSwapchain.Framebuffer.OutputDescription, window.Width, window.Height);
-        _timeProvider = SubsystemController.GetSubsystem<ITimeProvider>();
+        _timeProvider = GlobalSubsystems.Resolver.GetSubsystem<ITimeProvider>();
         _imGuiWindowManager = new ImGuiWindowManager();
         
         _uiCommandList = _parentGraphicsDevice.ResourceFactory.CreateCommandList();

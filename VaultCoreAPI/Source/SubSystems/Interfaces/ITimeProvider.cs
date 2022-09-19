@@ -1,5 +1,6 @@
 namespace Vault;
 
+//Subsystem that can provide time related functionality
 public interface ITimeProvider : ISubsystem
 {
     //Samples the High Resolution Timer and returns the number of ticks since program start

@@ -6,6 +6,13 @@
         <Nullable>enable</Nullable>
         <RootNamespace>Vault</RootNamespace>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageId>VaultCoreAPI</PackageId>
+        <Version>0.1.0</Version>
+        <Authors>Avalix</Authors>
+        <PackageDescription>Library containing interfaces to create Vault Emulation cores</PackageDescription>
+        <RepositoryUrl>https://github.com/Avalix/Vault</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
     </PropertyGroup>
 
     <ItemGroup>

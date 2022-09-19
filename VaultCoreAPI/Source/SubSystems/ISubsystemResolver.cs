@@ -1,6 +1,6 @@
 ﻿namespace Vault;
 
-public interface SubsystemResolver
+public interface ISubsystemResolver
 {
     public T GetSubsystem<T>() where T : ISubsystem;
 }

@@ -11,62 +11,94 @@ public class VaultGui : IGuiApplication
     private readonly ImGuiUiController _imGuiUiController;
     private readonly TimeProvider _timeProvider;
     private readonly CommandList _mainCommandList;
+    private readonly ILogger _logger;
+    private readonly EmuCoreLoader _emuCoreLoader;
     
     private IGuiApplication.ApplicationWindowMode? _nextWindowModeToSet;
     
-    public VaultGui()
+    public VaultGui(ILogger logger)
     {
-        SubsystemController.RegisterSubsystem(this);
+        _logger = logger;
+        try
+        {
+            GlobalSubsystems.RegisterSubsystem(this);
+            
+            _logger.Log("Vault GUI - Multi System Emulator\n");
+            _logger.Log("Initialising");
         
-        var vsync = false;
+            var vsync = true;
 #if DEBUG
         var debugGraphicsDevice = true;
 #else
-        var debugGraphicsDevice = false;
+            var debugGraphicsDevice = false;
 #endif
-        var windowCreateInfo = new WindowCreateInfo(
-            50, 50,
-            1280, 720,
-            WindowState.Normal,
-            "VaultGui");
+            var windowCreateInfo = new WindowCreateInfo(
+                50, 50,
+                1280, 720,
+                WindowState.Normal,
+                "VaultGui");
 
-        var graphicDeviceOptions = new GraphicsDeviceOptions(
-            debugGraphicsDevice,
-            null,
-            vsync,
-            ResourceBindingModel.Improved,
-            true,
-            true);
+            var graphicDeviceOptions = new GraphicsDeviceOptions(
+                debugGraphicsDevice,
+                null,
+                vsync,
+                ResourceBindingModel.Improved,
+                true,
+                true);
         
-        var preferredBackend = VeldridStartup.GetPlatformDefaultBackend();
+            var preferredBackend = VeldridStartup.GetPlatformDefaultBackend();
 
-        // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
-        Sdl2Native.SDL_Init(SDLInitFlags.Timer | SDLInitFlags.Video);
+            // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
+            Sdl2Native.SDL_Init(SDLInitFlags.Timer | SDLInitFlags.Video);
         
-        if(preferredBackend == GraphicsBackend.OpenGL || 
-           preferredBackend == GraphicsBackend.OpenGLES)
-        {
-            VeldridStartup.SetSDLGLContextAttributes(graphicDeviceOptions, preferredBackend);
-        }
+            if(preferredBackend == GraphicsBackend.OpenGL || 
+               preferredBackend == GraphicsBackend.OpenGLES)
+            {
+                VeldridStartup.SetSDLGLContextAttributes(graphicDeviceOptions, preferredBackend);
+            }
 
-        _window = VeldridStartup.CreateWindow(ref windowCreateInfo);
-        _graphicsDevice = VeldridStartup.CreateGraphicsDevice(_window, graphicDeviceOptions, preferredBackend);
+            _window = VeldridStartup.CreateWindow(ref windowCreateInfo);
+            _graphicsDevice = VeldridStartup.CreateGraphicsDevice(_window, graphicDeviceOptions, preferredBackend);
 
-        if(_graphicsDevice == null)
-        {
-            throw new InvalidOperationException("Veldrid Graphics Device Failed to initialise");
-        }
+            if(_graphicsDevice == null)
+            {
+                throw new InvalidOperationException("Veldrid Graphics Device Failed to initialise");
+            }
 
-        if(_window == null)
-        {
-            throw new InvalidOperationException("Veldrid Window Failed to initialise");
-        }
+            if(_window == null)
+            {
+                throw new InvalidOperationException("Veldrid Window Failed to initialise");
+            }
 
-        _window.Resized += OnWindowOnResized;
+            _window.Resized += OnWindowOnResized;
         
-        _timeProvider = new TimeProvider();
-        _imGuiUiController = new ImGuiUiController(_graphicsDevice, _window);
-        _mainCommandList = _graphicsDevice.ResourceFactory.CreateCommandList();
+            _timeProvider = new TimeProvider();
+            _emuCoreLoader = new EmuCoreLoader();
+
+            _imGuiUiController = new ImGuiUiController(_graphicsDevice, _window);
+            _mainCommandList = _graphicsDevice.ResourceFactory.CreateCommandList();
+            
+            funcA();
+        
+            _logger.Log("Initialising Finished");
+        }
+        catch(Exception e)
+        {
+            _logger.LogFatal("Exception thrown during Initialisation", e);
+            throw new ShutdownDueToFatalErrorException("Error During Initialisation");
+        }
+    }
+
+    private void funcA()
+    {
+       funcB();
+    }
+
+    private void funcB()
+    {
+        int test2 = 1;
+            
+        int test = test2 / 0;
     }
 
     public void Run()
@@ -94,7 +126,7 @@ public class VaultGui : IGuiApplication
         }
         finally
         {
-            Cleanup();
+            ShutDown();
         }
     }
     
@@ -160,12 +192,14 @@ public class VaultGui : IGuiApplication
         _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
     }
 
-    private void Cleanup()
+    private void ShutDown()
     {
+        _logger.Log("Shutting Down");
         _graphicsDevice.WaitForIdle();
         _mainCommandList.Dispose();
         _imGuiUiController.Dispose();
         _graphicsDevice.Dispose();
+        _logger.Log("Shut Down Finished");
     }
 
     

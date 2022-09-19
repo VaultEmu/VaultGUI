@@ -9,6 +9,7 @@
         <Version>0.1.0</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <ApplicationIcon>Assets\VaultIcon.ico</ApplicationIcon>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
@@ -24,10 +25,13 @@
 
     <ItemGroup>
       <ProjectReference Include="..\VaultCoreAPI\VaultCoreAPI.csproj" />
+      <ProjectReference Include="..\VaultUtils\VaultUtils.csproj" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="McMaster.NETCore.Plugins" Version="1.4.0" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+      <PackageReference Include="NLog" Version="5.0.4" />
       <PackageReference Include="StbImageSharp" Version="2.27.11" />
       <PackageReference Include="Veldrid" Version="4.8.0" />
       <PackageReference Include="Veldrid.SPIRV" Version="1.0.15" />

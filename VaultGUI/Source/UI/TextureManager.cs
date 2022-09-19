@@ -110,7 +110,7 @@ public class TextureManager : ITextureManager
         _parentGraphicsDevice = graphicsDevice;
         _parentImGuiRenderer = imGuiRenderer;
 
-        SubsystemController.RegisterSubsystem(this);
+        GlobalSubsystems.RegisterSubsystem(this);
     }
 
     public Texture2D CreateTexture(uint width, uint height,

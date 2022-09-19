@@ -1,5 +1,6 @@
 namespace Vault;
 
+//Subsystem for creating and working with Textures
 public interface ITextureManager : ISubsystem
 {
     //Creates a texture for use with imgui

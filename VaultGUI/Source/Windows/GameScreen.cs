@@ -3,13 +3,14 @@ using ImGuiNET;
 
 namespace Vault;
 
-public class GameScreen : IImguiGuiWindow
+public class GameScreen : IImGuiWindow
 {
     private const int SCREEN_PADDING = 16;
 
     private readonly ITextureManager _textureManager;
-    private readonly IImguiWindowManager _imguiWindowManager;
+    private readonly IImGuiWindowManager _imGuiWindowManager;
     private readonly IGuiApplication _guiApplication;
+    private readonly  ILogger _logger;
 
     private bool _pixelPerfectScaling = true;
     private bool _autoScale = true;
@@ -28,9 +29,10 @@ public class GameScreen : IImguiGuiWindow
 
     public GameScreen()
     {
-        _textureManager = SubsystemController.GetSubsystem<ITextureManager>();
-        _imguiWindowManager = SubsystemController.GetSubsystem<IImguiWindowManager>();
-        _guiApplication = SubsystemController.GetSubsystem<IGuiApplication>();
+        _textureManager = GlobalSubsystems.Resolver.GetSubsystem<ITextureManager>();
+        _imGuiWindowManager = GlobalSubsystems.Resolver.GetSubsystem<IImGuiWindowManager>();
+        _guiApplication = GlobalSubsystems.Resolver.GetSubsystem<IGuiApplication>();
+        _logger = GlobalSubsystems.Resolver.GetSubsystem<ILogger>();
         
         _testCardTexture = _textureManager.LoadTextureFromDisk(@".\Assets\TestCard.png");
     }
@@ -46,21 +48,21 @@ public class GameScreen : IImguiGuiWindow
         if(_switchFullScreenMode)
         {
             _switchFullScreenMode = false;
-            if(_imguiWindowManager.GetFullscreenWindow() == this)
+            if(_imGuiWindowManager.GetFullscreenWindow() == this)
             {
-                _imguiWindowManager.ClearFullscreenWindow();
+                _imGuiWindowManager.ClearFullscreenWindow();
                 _guiApplication.SetApplicationWindowMode(IGuiApplication.ApplicationWindowMode.Normal);
                         
             }
             else
             {
-                _imguiWindowManager.SetWindowAsFullscreen(this);
+                _imGuiWindowManager.SetWindowAsFullscreen(this);
                 _guiApplication.SetApplicationWindowMode(IGuiApplication.ApplicationWindowMode.BorderlessFullScreen);
             }
         }
     }
     
-    public void OnBeforeDrawImguiWindow()
+    public void OnBeforeDrawImGuiWindow()
     {
         ImGui.PushStyleVar(ImGuiStyleVar.WindowMinSize, new Vector2(200, 200));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));
@@ -76,7 +78,7 @@ public class GameScreen : IImguiGuiWindow
         
         DrawScreenTexture(contentRectMax, contentRectMin, _textureToDraw);
 
-        //CB: Pop for Style vars done in OnBeforeDrawImguiWindow here - We need them popped before we do the menu
+        //CB: Pop for Style vars done in OnBeforeDrawImGuiWindow here - We need them popped before we do the menu
         ImGui.PopStyleVar(3);
  
         DrawWindowMenuBar();
