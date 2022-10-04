@@ -24,7 +24,10 @@ public class ImGuiUiController : IDisposable
     {
         _parentGraphicsDevice = graphicsDevice;
         _parentWindow = window;
-        _imGuiRenderer = new ImGuiRenderer(graphicsDevice, graphicsDevice.MainSwapchain.Framebuffer.OutputDescription, window.Width, window.Height);
+        _imGuiRenderer = new ImGuiRenderer(graphicsDevice, 
+            graphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
+            window.Width, window.Height,
+            DpiAwareUtils.GetDPIScale(window));
         _timeProvider = GlobalSubsystems.Resolver.GetSubsystem<ITimeProvider>();
         _imGuiWindowManager = new ImGuiWindowManager();
         
@@ -37,7 +40,7 @@ public class ImGuiUiController : IDisposable
         
         _backgroundTexture = _textureManager.LoadTextureFromDisk(@".\Assets\VaultBg.png");
         _backgroundTextureImGuiRef = _textureManager.GetOrCreateImGuiTextureRefForTexture(_backgroundTexture);
-        
+
         AddDefaultWindows();
     }
     
@@ -190,6 +193,5 @@ public class ImGuiUiController : IDisposable
     private void OnWindowOnResized()
     {
         _imGuiRenderer.WindowResized(_parentWindow.Width, _parentWindow.Height);
-        
     }
 }

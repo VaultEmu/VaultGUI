@@ -4,9 +4,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultGUI", "VaultGUI\VaultG
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultCoreAPI", "VaultCoreAPI\VaultCoreAPI.csproj", "{4467150E-5770-47C0-86CB-6AFE797CADE1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultUtils", "VaultUtils\VaultUtils.csproj", "{EF45A1A7-6CFB-4B4C-B76C-CEBBFCD4F53C}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libs", "Libs", "{08FFFB65-5910-49D4-BA95-6659223E9595}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{F11B9884-207F-452D-AD85-161AF64076B6}"
+	ProjectSection(SolutionItems) = preProject
+		BuildAndUploadNugetPackage.bat = BuildAndUploadNugetPackage.bat
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -22,13 +25,8 @@ Global
 		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EF45A1A7-6CFB-4B4C-B76C-CEBBFCD4F53C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EF45A1A7-6CFB-4B4C-B76C-CEBBFCD4F53C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EF45A1A7-6CFB-4B4C-B76C-CEBBFCD4F53C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EF45A1A7-6CFB-4B4C-B76C-CEBBFCD4F53C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{EF45A1A7-6CFB-4B4C-B76C-CEBBFCD4F53C} = {08FFFB65-5910-49D4-BA95-6659223E9595}
 		{4467150E-5770-47C0-86CB-6AFE797CADE1} = {08FFFB65-5910-49D4-BA95-6659223E9595}
 	EndGlobalSection
 EndGlobal

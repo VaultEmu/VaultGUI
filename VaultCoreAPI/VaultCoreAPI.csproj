@@ -8,15 +8,28 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageId>VaultCoreAPI</PackageId>
-        <Version>0.1.0</Version>
-        <Authors>Avalix</Authors>
+        <Authors>Chris Butler</Authors>
         <PackageDescription>Library containing interfaces to create Vault Emulation cores</PackageDescription>
         <RepositoryUrl>https://github.com/Avalix/Vault</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <MinVerTagPrefix>vault-core-api-</MinVerTagPrefix>
+        <MinVerIgnoreHeight>true</MinVerIgnoreHeight>
+    </PropertyGroup>
+
     <ItemGroup>
       <PackageReference Include="ImGui.NET" Version="1.87.3" />
+      <PackageReference Include="MinVer" Version="4.2.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Source\Systems" />
+      <Folder Include="Source\Systems\Graphics\Utils" />
     </ItemGroup>
 
 </Project>

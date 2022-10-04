@@ -25,7 +25,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\VaultCoreAPI\VaultCoreAPI.csproj" />
-      <ProjectReference Include="..\VaultUtils\VaultUtils.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -39,7 +38,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="Assets\*.*">
+      <None Update="Assets\**\*.*">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>

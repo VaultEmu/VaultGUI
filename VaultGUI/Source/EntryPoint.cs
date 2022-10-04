@@ -2,8 +2,12 @@
 
 public static class EntryPoint
 { 
+    
+    
     private static void Main()
     {
+        DpiAwareUtils.SetProcessDPIAware();
+        
         var logger = new Logger();
         try
         {

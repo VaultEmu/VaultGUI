@@ -14,4 +14,7 @@ public interface IGuiApplication : ISubsystem
     
     //Sets the window mode for the application
     public void SetApplicationWindowMode(ApplicationWindowMode newWindowMode);
+    
+    // //Gets the size of the application window
+    // public void GetApplicationWindowSize(out int width, out int height);
 }

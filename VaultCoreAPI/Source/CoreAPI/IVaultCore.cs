@@ -1,7 +1,7 @@
 ﻿namespace VaultCoreAPI;
 
 //Main Interface to implement to create an emulation core that vault can use
-public interface IEmuCoreApi
+public interface IVaultCore
 {
     
 }

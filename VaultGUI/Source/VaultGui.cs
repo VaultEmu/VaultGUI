@@ -12,10 +12,11 @@ public class VaultGui : IGuiApplication
     private readonly TimeProvider _timeProvider;
     private readonly CommandList _mainCommandList;
     private readonly ILogger _logger;
-    private readonly EmuCoreLoader _emuCoreLoader;
+    private readonly VaultCoreLoader _vaultCoreLoader;
     
+    private SDL_DisplayMode[] _fullScreenDisplayMode;
     private IGuiApplication.ApplicationWindowMode? _nextWindowModeToSet;
-    
+
     public VaultGui(ILogger logger)
     {
         _logger = logger;
@@ -32,11 +33,6 @@ public class VaultGui : IGuiApplication
 #else
             var debugGraphicsDevice = false;
 #endif
-            var windowCreateInfo = new WindowCreateInfo(
-                50, 50,
-                1280, 720,
-                WindowState.Normal,
-                "VaultGui");
 
             var graphicDeviceOptions = new GraphicsDeviceOptions(
                 debugGraphicsDevice,
@@ -56,8 +52,18 @@ public class VaultGui : IGuiApplication
             {
                 VeldridStartup.SetSDLGLContextAttributes(graphicDeviceOptions, preferredBackend);
             }
-
-            _window = VeldridStartup.CreateWindow(ref windowCreateInfo);
+            
+            var flags = 
+                SDL_WindowFlags.OpenGL | 
+                SDL_WindowFlags.Resizable | 
+                SDL_WindowFlags.AllowHighDpi;
+            
+            _window = new Sdl2Window(
+                "VaultGui",
+                50, 50,
+                1280, 720,
+                flags, false);
+            
             _graphicsDevice = VeldridStartup.CreateGraphicsDevice(_window, graphicDeviceOptions, preferredBackend);
 
             if(_graphicsDevice == null)
@@ -71,15 +77,17 @@ public class VaultGui : IGuiApplication
             }
 
             _window.Resized += OnWindowOnResized;
-        
+            
             _timeProvider = new TimeProvider();
-            _emuCoreLoader = new EmuCoreLoader();
+            _vaultCoreLoader = new VaultCoreLoader();
 
             _imGuiUiController = new ImGuiUiController(_graphicsDevice, _window);
             _mainCommandList = _graphicsDevice.ResourceFactory.CreateCommandList();
             
-            funcA();
-        
+            _fullScreenDisplayMode = Array.Empty<SDL_DisplayMode>();
+            
+            CalculateFullScreenDisplayModeToUse();
+
             _logger.Log("Initialising Finished");
         }
         catch(Exception e)
@@ -88,17 +96,44 @@ public class VaultGui : IGuiApplication
             throw new ShutdownDueToFatalErrorException("Error During Initialisation");
         }
     }
-
-    private void funcA()
+    
+    private unsafe void CalculateFullScreenDisplayModeToUse()
     {
-       funcB();
-    }
-
-    private void funcB()
-    {
-        int test2 = 1;
+        _logger.Log("Calculating Full Screen Display Mode");
+        unsafe
+        {
+            var numDisplays = Sdl2Native.SDL_GetNumVideoDisplays();
             
-        int test = test2 / 0;
+            _fullScreenDisplayMode = new SDL_DisplayMode[numDisplays];
+            
+            for (int displayIndex = 0; displayIndex < numDisplays; ++displayIndex)
+            {
+                var numDisplayModes = SDLExtensions.SDL_GetNumDisplayModes(0);
+
+                var displayMode = new SDL_DisplayMode();
+                _fullScreenDisplayMode[displayIndex] = new SDL_DisplayMode();
+
+                for (int displayModeIndex = 0; displayModeIndex < numDisplayModes; ++displayModeIndex)
+                {
+                    if(SDLExtensions.SDL_GetDisplayMode(0, displayModeIndex, &displayMode) == 0)
+                    {
+                        if(displayMode.w * displayMode.h * displayMode.refresh_rate >
+                           _fullScreenDisplayMode[displayIndex].w * 
+                           _fullScreenDisplayMode[displayIndex].h * 
+                           _fullScreenDisplayMode[displayIndex].refresh_rate)
+                        {
+                            _fullScreenDisplayMode[displayIndex] = displayMode;
+                        }
+                    }
+                }
+                
+                _logger.Log($"Display {displayIndex}: " +
+                            $"{_fullScreenDisplayMode[displayIndex] .w}x{_fullScreenDisplayMode[displayIndex] .h} @ " +
+                            $"{_fullScreenDisplayMode[displayIndex] .refresh_rate}");
+            }
+        }
+        
+        _logger.Log($"DPI Scale {DpiAwareUtils.GetDPIScale(_window)}");
     }
 
     public void Run()
@@ -140,26 +175,39 @@ public class VaultGui : IGuiApplication
         {
             return;
         }
-
-        switch(_nextWindowModeToSet)
+        
+        unsafe
         {
-            case IGuiApplication.ApplicationWindowMode.Normal:
-                _window.WindowState = WindowState.Normal;
-                break;
-            case IGuiApplication.ApplicationWindowMode.FullScreen:
-                _window.WindowState = WindowState.FullScreen;
-                break;
-            case IGuiApplication.ApplicationWindowMode.Maximized:
-                _window.WindowState = WindowState.Maximized;
-                break;
-            case IGuiApplication.ApplicationWindowMode.Minimized:
-                _window.WindowState = WindowState.Minimized;
-                break;
-            case IGuiApplication.ApplicationWindowMode.BorderlessFullScreen:
-                _window.WindowState = WindowState.BorderlessFullScreen;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(_nextWindowModeToSet), _nextWindowModeToSet, null);
+            switch(_nextWindowModeToSet)
+            {
+                case IGuiApplication.ApplicationWindowMode.Normal:
+                    _window.WindowState = WindowState.Normal;
+                    break;
+                case IGuiApplication.ApplicationWindowMode.FullScreen:
+                    var currentMonitor = SDLExtensions.SDL_GetWindowDisplayIndex(_window);
+                    
+                    var displayModeToUse = _fullScreenDisplayMode[currentMonitor];
+                    
+                    if(SDLExtensions.SDL_SetWindowDisplayMode(_window, &displayModeToUse) != 0)
+                    {
+                        var errorString = SDLUtils.GetErrorStringIfSet();
+                        _logger.LogError("Unable To set Window Display Mode - Error: " + (errorString ?? "Unknown Error"));
+                    }
+                    
+                    _window.WindowState = WindowState.FullScreen;
+                    break;
+                case IGuiApplication.ApplicationWindowMode.Maximized:
+                    _window.WindowState = WindowState.Maximized;
+                    break;
+                case IGuiApplication.ApplicationWindowMode.Minimized:
+                    _window.WindowState = WindowState.Minimized;
+                    break;
+                case IGuiApplication.ApplicationWindowMode.BorderlessFullScreen:
+                    _window.WindowState = WindowState.BorderlessFullScreen;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(_nextWindowModeToSet), _nextWindowModeToSet, null);
+            }
         }
         
         _nextWindowModeToSet = null;
@@ -167,6 +215,7 @@ public class VaultGui : IGuiApplication
 
     private void OnWindowOnResized()
     {
+        _logger.Log($"Window Resized: {_window.Width}x{_window.Height}");
         _graphicsDevice.MainSwapchain.Resize((uint)_window.Width, (uint)_window.Height);
     }
 
@@ -201,6 +250,4 @@ public class VaultGui : IGuiApplication
         _graphicsDevice.Dispose();
         _logger.Log("Shut Down Finished");
     }
-
-    
 }

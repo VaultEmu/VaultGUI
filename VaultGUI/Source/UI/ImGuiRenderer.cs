@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using Vault;
 using Veldrid;
 
 namespace ImGuiNET;
@@ -48,64 +49,19 @@ public class ImGuiRenderer : IDisposable
     /// <summary>
     ///     Constructs a new ImGuiRenderer.
     /// </summary>
-    public ImGuiRenderer(GraphicsDevice gd, OutputDescription outputDescription, int width, int height)
+    public ImGuiRenderer(GraphicsDevice gd, OutputDescription outputDescription, int width, int height, float dpiScale)
     {
         _gd = gd;
         _windowWidth = width;
         _windowHeight = height;
+        
+        var factory = gd.ResourceFactory;
 
         var context = ImGui.CreateContext();
         ImGui.SetCurrentContext(context);
-
-        ImGui.GetIO().Fonts.AddFontDefault();
+        
         ImGui.GetIO().BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
-
-        var factory = gd.ResourceFactory;
-        _vertexBuffer = factory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
-        _vertexBuffer.Name = "ImGui.NET Vertex Buffer";
-        _indexBuffer = factory.CreateBuffer(new BufferDescription(2000, BufferUsage.IndexBuffer | BufferUsage.Dynamic));
-        _indexBuffer.Name = "ImGui.NET Index Buffer";
         
-        
-        ImGui.GetIO().Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out var fontTextureWidth, out var fontTextureHeight, out var fontTextureBytesPerPixel);
-        ImGui.GetIO().Fonts.SetTexID(_fontAtlasId);
-
-        _fontTexture = gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D(
-            (uint)fontTextureWidth,
-            (uint)fontTextureHeight,
-            1,
-            1,
-            PixelFormat.R8_G8_B8_A8_UNorm,
-            TextureUsage.Sampled));
-        _fontTexture.Name = "ImGui.NET Font Texture";
-        
-        gd.UpdateTexture(
-            _fontTexture,
-            pixels,
-            (uint)(fontTextureBytesPerPixel * fontTextureWidth * fontTextureHeight),
-            0,
-            0,
-            0,
-            (uint)fontTextureWidth,
-            (uint)fontTextureHeight,
-            1,
-            0,
-            0);
-        
-        _fontTextureView = gd.ResourceFactory.CreateTextureView(_fontTexture);
-
-        ImGui.GetIO().Fonts.ClearTexData();
-
-        _projMatrixBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
-        _projMatrixBuffer.Name = "ImGui.NET Projection Buffer";
-
-        var vertexShaderBytes = LoadEmbeddedShaderCode(gd.ResourceFactory, "imgui-vertex");
-        var fragmentShaderBytes = LoadEmbeddedShaderCode(gd.ResourceFactory, "imgui-frag");
-        _vertexShader = factory.CreateShader(new ShaderDescription(ShaderStages.Vertex, vertexShaderBytes,
-            gd.BackendType == GraphicsBackend.Metal ? "VS" : "main"));
-        _fragmentShader =
-            factory.CreateShader(new ShaderDescription(ShaderStages.Fragment, fragmentShaderBytes, gd.BackendType == GraphicsBackend.Metal ? "FS" : "main"));
-
         VertexLayoutDescription[] vertexLayouts =
         {
             new(
@@ -120,6 +76,89 @@ public class ImGuiRenderer : IDisposable
         
         _textureLayout = factory.CreateResourceLayout(new ResourceLayoutDescription(
             new ResourceLayoutElementDescription("MainTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));
+        
+        
+        unsafe
+        {
+            //Load the main Fonts
+            var fontSize = (float)Math.Floor(15.0f * dpiScale);
+
+            var fontAwesomeIconRange = new ushort[]
+            {
+                Fonts.FontAwesomeCodes.IconMin,
+                Fonts.FontAwesomeCodes.IconMax,
+                0
+            };
+            
+            var mainFontData = File.ReadAllBytes(@".\Assets\Fonts\JetBrainsMonoNL-Medium.ttf");
+            var fontAwesomeFontData = File.ReadAllBytes(@".\Assets\Fonts\fa-solid-900.ttf");
+            
+            fixed (byte* mainFontDataPtr = mainFontData)
+            fixed (byte* fontAwesomeFontDataPtr = fontAwesomeFontData)
+            fixed (ushort* rangesPtr = fontAwesomeIconRange)
+            {
+                ImGui.GetIO().Fonts.Clear();
+                ImGui.GetIO().Fonts.AddFontFromMemoryTTF((IntPtr)mainFontDataPtr, mainFontData.Length, fontSize);
+                
+                var config = ImGuiNative.ImFontConfig_ImFontConfig();
+                config->MergeMode = 1;
+                config->GlyphMinAdvanceX = fontSize;
+
+                //Merge icons into main font
+                ImGui.GetIO().Fonts.AddFontFromMemoryTTF((IntPtr)fontAwesomeFontDataPtr, fontAwesomeFontData.Length, 
+                    fontSize, config, (IntPtr)rangesPtr);             // Merge into first font
+                
+                //And Generate
+                ImGui.GetIO().Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out var fontTextureWidth, out var fontTextureHeight, out var fontTextureBytesPerPixel);
+                ImGui.GetIO().Fonts.SetTexID(_fontAtlasId);
+
+                _fontTexture = gd.ResourceFactory.CreateTexture(TextureDescription.Texture2D(
+                    (uint)fontTextureWidth,
+                    (uint)fontTextureHeight,
+                    1,
+                    1,
+                    PixelFormat.R8_G8_B8_A8_UNorm,
+                    TextureUsage.Sampled));
+                _fontTexture.Name = "ImGui.NET Font Texture";
+        
+                _gd.UpdateTexture(
+                    _fontTexture,
+                    pixels,
+                    (uint)(fontTextureBytesPerPixel * fontTextureWidth * fontTextureHeight),
+                    0,
+                    0,
+                    0,
+                    (uint)fontTextureWidth,
+                    (uint)fontTextureHeight,
+                    1,
+                    0,
+                    0);
+        
+                _fontTextureView = _gd.ResourceFactory.CreateTextureView(_fontTexture);
+
+                ImGui.GetIO().Fonts.ClearTexData();
+                
+                _fontTextureResourceSet = _gd.ResourceFactory.CreateResourceSet(
+                    new ResourceSetDescription(_textureLayout, _fontTextureView));
+            }
+        }
+
+        _vertexBuffer = factory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
+        _vertexBuffer.Name = "ImGui.NET Vertex Buffer";
+        _indexBuffer = factory.CreateBuffer(new BufferDescription(2000, BufferUsage.IndexBuffer | BufferUsage.Dynamic));
+        _indexBuffer.Name = "ImGui.NET Index Buffer";
+
+        _projMatrixBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
+        _projMatrixBuffer.Name = "ImGui.NET Projection Buffer";
+
+        var vertexShaderBytes = LoadEmbeddedShaderCode(gd.ResourceFactory, "imgui-vertex");
+        var fragmentShaderBytes = LoadEmbeddedShaderCode(gd.ResourceFactory, "imgui-frag");
+        _vertexShader = factory.CreateShader(new ShaderDescription(ShaderStages.Vertex, vertexShaderBytes,
+            gd.BackendType == GraphicsBackend.Metal ? "VS" : "main"));
+        _fragmentShader =
+            factory.CreateShader(new ShaderDescription(ShaderStages.Fragment, fragmentShaderBytes, gd.BackendType == GraphicsBackend.Metal ? "FS" : "main"));
+
+
 
         var pd = new GraphicsPipelineDescription(
             BlendStateDescription.SingleAlphaBlend,
@@ -135,8 +174,9 @@ public class ImGuiRenderer : IDisposable
         _mainResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_layout,
             _projMatrixBuffer,
             gd.PointSampler));
-
-        _fontTextureResourceSet = factory.CreateResourceSet(new ResourceSetDescription(_textureLayout, _fontTextureView));
+        
+        ImGui.GetStyle().ScaleAllSizes(dpiScale);
+        
         SetKeyMappings();
 
         SetPerFrameImGuiData(1f / 60f);

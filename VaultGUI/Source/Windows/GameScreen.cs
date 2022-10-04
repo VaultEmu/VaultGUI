@@ -12,7 +12,7 @@ public class GameScreen : IImGuiWindow
     private readonly IGuiApplication _guiApplication;
     private readonly  ILogger _logger;
 
-    private bool _pixelPerfectScaling = true;
+    private bool _pixelPerfectScaling = false;
     private bool _autoScale = true;
     private float _currentScale = 1.0f;
     
@@ -23,8 +23,21 @@ public class GameScreen : IImGuiWindow
     
     private Texture2D _textureToDraw => _textureToShowOnScreen ?? _testCardTexture;
     
+    private bool _isShowingTestCard => _textureToDraw == _testCardTexture;
+    
     public string CustomWindowID => "Screen";
-    public string WindowTitle => $"Screen ({_textureToDraw.Width}x{_textureToDraw.Height}) - {_currentScale * 100.0f:0}%";
+    public string WindowTitle
+    {
+        get
+        {
+            if(_isShowingTestCard)
+            {
+                return "Screen";
+            }
+        
+            return $"Screen ({_textureToDraw.Width}x{_textureToDraw.Height}) - {_currentScale * 100.0f:0}%";
+        }
+    }
     public ImGuiWindowFlags WindowFlags => ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.MenuBar;
 
     public GameScreen()
@@ -34,7 +47,7 @@ public class GameScreen : IImGuiWindow
         _guiApplication = GlobalSubsystems.Resolver.GetSubsystem<IGuiApplication>();
         _logger = GlobalSubsystems.Resolver.GetSubsystem<ILogger>();
         
-        _testCardTexture = _textureManager.LoadTextureFromDisk(@".\Assets\TestCard.png");
+        _testCardTexture = _textureManager.LoadTextureFromDisk(@".\Assets\TestCard.png", false);
     }
     
     public void SetTextureToShowOnScreen(Texture2D texture)
@@ -64,9 +77,10 @@ public class GameScreen : IImGuiWindow
     
     public void OnBeforeDrawImGuiWindow()
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowMinSize, new Vector2(200, 200));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowMinSize, new Vector2(350, 350));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, ImGui.GetColorU32(new Vector4(0.2f, 0.2f, 0.2f, 1.0f)));
     }
     
     public void OnDrawImGuiWindowContent()
@@ -88,11 +102,20 @@ public class GameScreen : IImGuiWindow
     {
         var width = contentRectMax.X - contentRectMin.X;
         var height = contentRectMax.Y - contentRectMin.Y;
+        
+        var isFullscreen = _imGuiWindowManager.GetFullscreenWindow() == this;
+        
+        var padding = SCREEN_PADDING;
+        
+        if(isFullscreen)
+        {
+            padding = 0;
+        }
 
         if(_autoScale)
         {
-            var widthMul = (width - SCREEN_PADDING * 2) / textureToDraw.Width;
-            var heightMul = (height - SCREEN_PADDING * 2) / textureToDraw.Height;
+            var widthMul = (width - padding * 2) / textureToDraw.Width;
+            var heightMul = (height - padding * 2) / textureToDraw.Height;
 
             _currentScale = Math.Min(widthMul, heightMul);
         }
@@ -101,12 +124,18 @@ public class GameScreen : IImGuiWindow
         {
             _currentScale = RoundZoomToNearestPixelPerfectSize(_currentScale);
         }
+        
+        if(_isShowingTestCard)
+        {
+            //Clamp Testcard to max size4
+            _currentScale = Math.Min(_currentScale, 1.0f);
+        }
 
         //Calculate and draw screen texture
         var imageSize = new Vector2(textureToDraw.Width * _currentScale, textureToDraw.Height * _currentScale);
 
-        var widthMargin = Math.Max(width - imageSize.X, SCREEN_PADDING * 2);
-        var heightMargin = Math.Max(height - imageSize.Y, SCREEN_PADDING * 2);
+        var widthMargin = Math.Max(width - imageSize.X, padding * 2);
+        var heightMargin = Math.Max(height - imageSize.Y, padding * 2);
 
         var startX = contentRectMin.X + ImGui.GetScrollX() + widthMargin * 0.5f;
         var startY = contentRectMin.Y + ImGui.GetScrollY() + heightMargin * 0.5f;
@@ -117,7 +146,7 @@ public class GameScreen : IImGuiWindow
         ImGui.Image(imguiTextureRef.ImGuiRef, imageSize);
 
         //Add dummy for right/bottom padding so scroll bars appear at correct point
-        ImGui.Dummy(new Vector2(imageSize.X + SCREEN_PADDING * 2.0f, SCREEN_PADDING));
+        ImGui.Dummy(new Vector2(imageSize.X + padding * 2.0f, padding));
     }
 
     private void CheckForFullScreenDoubleClick(Vector2 contentRectMin, Vector2 contentRectMax)
@@ -155,7 +184,7 @@ public class GameScreen : IImGuiWindow
                 ImGui.EndMenu();
             }
 
-            ImGui.SetCursorPosX(ImGui.GetWindowWidth() - 95);
+            ImGui.SetCursorPosX(ImGui.GetWindowWidth() - 120);
 
             if(_autoScale)
             {
@@ -209,7 +238,7 @@ public class GameScreen : IImGuiWindow
 
     public void OnAfterDrawImGuiWindow()
     {
-        //Nothing to do 
+        ImGui.PopStyleColor();
     }
 
     public void Dispose()
