@@ -1,15 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultGUI", "VaultGUI\VaultGUI.csproj", "{AC7F86B3-C8C1-41FE-8284-167EFFF26375}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultCoreAPI", "VaultCoreAPI\VaultCoreAPI.csproj", "{4467150E-5770-47C0-86CB-6AFE797CADE1}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libs", "Libs", "{08FFFB65-5910-49D4-BA95-6659223E9595}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{F11B9884-207F-452D-AD85-161AF64076B6}"
-	ProjectSection(SolutionItems) = preProject
-		BuildAndUploadNugetPackage.bat = BuildAndUploadNugetPackage.bat
-	EndProjectSection
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VaultGUI", "VaultGUI.csproj", "{B62462CF-1467-47C9-9365-1FB83EDB2BF7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,16 +8,11 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{AC7F86B3-C8C1-41FE-8284-167EFFF26375}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AC7F86B3-C8C1-41FE-8284-167EFFF26375}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AC7F86B3-C8C1-41FE-8284-167EFFF26375}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AC7F86B3-C8C1-41FE-8284-167EFFF26375}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4467150E-5770-47C0-86CB-6AFE797CADE1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B62462CF-1467-47C9-9365-1FB83EDB2BF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B62462CF-1467-47C9-9365-1FB83EDB2BF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B62462CF-1467-47C9-9365-1FB83EDB2BF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B62462CF-1467-47C9-9365-1FB83EDB2BF7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{4467150E-5770-47C0-86CB-6AFE797CADE1} = {08FFFB65-5910-49D4-BA95-6659223E9595}
 	EndGlobalSection
 EndGlobal
