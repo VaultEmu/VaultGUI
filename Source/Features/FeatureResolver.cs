@@ -15,7 +15,7 @@ public class FeatureResolver : IFeatureResolver
         foreach(var interfaceType in featureToRegister.GetType().GetInterfaces())
         {
             //ignore base type of all features
-            if(interfaceType == typeof(IFeature))
+            if(interfaceType.IsAssignableTo(typeof(IFeature)) == false || interfaceType == typeof(IFeature))
             {
                 continue;
             }
@@ -24,7 +24,7 @@ public class FeatureResolver : IFeatureResolver
         }
     }
     
-    public T GetFeature<T>() where T : IFeature
+    public T? GetFeature<T>() where T : IFeature
     {
         if(typeof(T) == typeof(IFeature))
         {
@@ -33,7 +33,7 @@ public class FeatureResolver : IFeatureResolver
         
         if(_featureLookup.TryGetValue(typeof(T), out var feature) == false)
         {
-            throw new InvalidOperationException($"No concrete type for feature type {typeof(T)} registered");
+            return default;
         }
         
         return (T)feature;
