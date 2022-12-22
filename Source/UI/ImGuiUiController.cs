@@ -20,9 +20,7 @@ public class ImGuiUiController : IDisposable
     private readonly TextureManager _textureManager;
     private readonly Texture2D _backgroundTexture;
     private readonly ImGuiTextureRef _backgroundTextureImGuiRef;
-    
-    private readonly ITimeProvider _timeProvider;
-    
+
     public ImGuiUiController(GraphicsDevice graphicsDevice, Sdl2Window window)
     {
         _parentGraphicsDevice = graphicsDevice;
@@ -31,7 +29,6 @@ public class ImGuiUiController : IDisposable
             graphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
             window.Width, window.Height,
             DpiAwareUtils.GetDPIScale(window));
-        _timeProvider = GlobalFeatures.Resolver.GetFeature<ITimeProvider>();
         _imGuiWindowManager = new ImGuiWindowManager();
         
         _uiCommandList = _parentGraphicsDevice.ResourceFactory.CreateCommandList();
@@ -47,9 +44,9 @@ public class ImGuiUiController : IDisposable
         AddDefaultWindows();
     }
     
-    public void UpdateUi(InputSnapshot snapshot)
+    public void UpdateUi(InputSnapshot snapshot, float frameDeltaTime)
     {
-        _imGuiRenderer.Update(_timeProvider.DeltaTime, snapshot);
+        _imGuiRenderer.Update(frameDeltaTime, snapshot);
         
         _imGuiWindowManager.UpdateWindows();
     }
@@ -105,6 +102,7 @@ public class ImGuiUiController : IDisposable
         _imGuiRenderer.Dispose();
         _uiCommandList.Dispose();
         _imGuiWindowManager.Dispose();
+        _textureManager.Dispose();
 
         //Dont dispose _parentGraphicsDevice, we do not own it, only have a reference to it
     }
@@ -123,7 +121,10 @@ public class ImGuiUiController : IDisposable
         {
             if(ImGui.BeginMenu("File"))
             {
-                if(ImGui.MenuItem("Open", "CTRL+O")) { }
+                if(ImGui.MenuItem("Load Core", "CTRL+O"))
+                {
+                    
+                }
 
                 ImGui.Separator();
                 if(ImGui.MenuItem("Exit", "Alt-F4"))

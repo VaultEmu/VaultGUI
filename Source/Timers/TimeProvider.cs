@@ -2,41 +2,61 @@ using VaultCore.CoreAPI;
 
 namespace Vault;
 
-public class TimeProvider : ITimeProvider
+public class TimeProvider : IHighResTimer
 {
     private readonly HighResolutionTimer _highResolutionTimer;
-    private readonly AverageTimeCounter _averageFpsTimer;
+    
+    private readonly AverageTimeCounter _averageRenderFpsTimer;
+    private readonly AverageTimeCounter _averageCoreUpdateFpsTimer;
+    
     private readonly ulong _startupTimeSample;
     
-    private ulong _prevDeltaTimeSample;
-    private float _lastDeltaTime;
-    private float _averageDeltaTime;
+    private ulong _prevFrameDeltaTimeSample;
+    private float _lastFrameDeltaTime;
+    private float _averageFrameDeltaTime;
+    
+    private float _lastCoreUpdateDeltaTime;
+    private float _averageCoreUpdateDeltaTime;
+
 
     public ulong HighResolutionTimerSample => _highResolutionTimer.Sample;
     public ulong HighResolutionTimerSampleFrequency => _highResolutionTimer.SampleFrequency;
-    public double DeltaTime => _lastDeltaTime;
-    public float Fps =>  1.0f / (float)DeltaTime;
-    public float AverageDeltaTime => _averageDeltaTime;
-    public float AverageFps =>  1.0f / AverageDeltaTime;
+    
+    public float CoreUpdateDeltaTime => _lastCoreUpdateDeltaTime;
+    public float AverageCoreUpdateDeltaTime => _averageCoreUpdateDeltaTime;
+    public float CoreUpdateFps =>  1.0f / _lastCoreUpdateDeltaTime;
+    public float AverageCoreUpdateFps =>  1.0f / _averageCoreUpdateDeltaTime;
+    
+    public float RenderFrameDeltaTime => _lastFrameDeltaTime;
+    public float AverageFrameDeltaTime => _averageFrameDeltaTime;
+    public float RenderFrameFps =>  1.0f / _lastFrameDeltaTime;
+    public float AverageRenderFrameFps =>  1.0f / _averageFrameDeltaTime;
     public double TimeSinceStartup => (float)(_highResolutionTimer.Sample - _startupTimeSample) / _highResolutionTimer.SampleFrequency;
     
     public TimeProvider()
     {
         _highResolutionTimer = new HighResolutionTimer();
-        _prevDeltaTimeSample = _highResolutionTimer.Sample;
-        _startupTimeSample = _prevDeltaTimeSample;
-        _averageFpsTimer = new AverageTimeCounter(60);
+        _prevFrameDeltaTimeSample = _highResolutionTimer.Sample;
+        _startupTimeSample = _prevFrameDeltaTimeSample;
+        _averageRenderFpsTimer = new AverageTimeCounter(60);
+        _averageCoreUpdateFpsTimer = new AverageTimeCounter();
         
         GlobalFeatures.RegisterFeature(this);
     }
     
-    public void Update()
+    public void OnFrameUpdate()
     {
         var sample = _highResolutionTimer.Sample;
         
-        _lastDeltaTime = (float)(sample - _prevDeltaTimeSample) / _highResolutionTimer.SampleFrequency;
-        _averageDeltaTime = _averageFpsTimer.Update(_lastDeltaTime);
+        _lastFrameDeltaTime = (float)(sample - _prevFrameDeltaTimeSample) / _highResolutionTimer.SampleFrequency;
+        _averageFrameDeltaTime = _averageRenderFpsTimer.Update(_lastFrameDeltaTime);
         
-        _prevDeltaTimeSample = sample;
+        _prevFrameDeltaTimeSample = sample;
+    }
+    
+    public void OnCoreUpdate(float deltaTime)
+    {
+        _lastCoreUpdateDeltaTime = deltaTime;
+        _averageCoreUpdateDeltaTime = _averageCoreUpdateFpsTimer.Update(_lastCoreUpdateDeltaTime);
     }
 }

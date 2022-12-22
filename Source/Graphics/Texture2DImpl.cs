@@ -5,6 +5,7 @@ namespace Vault;
 
 public partial class TextureManager
 {
+    //Implementation of Texture2D class that uses Veldrid as a backend
     private class Texture2DImpl : Texture2D
     {
         public readonly Texture VeldridTexture;
@@ -15,7 +16,7 @@ public partial class TextureManager
         
         public override uint Height => VeldridTexture.Height;
         
-        public override TextureFormat Format => TextureManager.GetVaultTextureFormatFromPixelFormat(VeldridTexture.Format);
+        public override TextureFormat Format => GetVaultTextureFormatFromPixelFormat(VeldridTexture.Format);
 
         public override bool IsWritingPixelsToTexture => _isWritingPixelsToTexture;
         public TextureFastCpuWriteData? TextureCpuWriteData { get; }
@@ -73,14 +74,12 @@ public partial class TextureManager
 
         public override void WritePixelData<T>(
             T[] pixelData,
-            uint x, 
-            uint y, 
-            uint width, 
-            uint height, 
-            uint mipLevel = 0) 
+            uint pixelDataWidth, uint pixelDataHeight,
+            uint targetX, uint targetY,
+            uint mipLevel = 0)
             where T : struct
         {
-            _parentManager.WritePixelData(this, pixelData, x, y, width, height, mipLevel);
+            _parentManager.WritePixelData(this, pixelData, pixelDataWidth, pixelDataHeight, targetX, targetY, mipLevel);
         }
         
         protected override void Dispose(bool disposing)

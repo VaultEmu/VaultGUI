@@ -3,6 +3,7 @@ using Veldrid.Sdl2;
 
 namespace Vault;
 
+//CB: Contains extra functions not currently exposed by the C# SDL wrapper library
 public static class SDLExtensions
 {
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

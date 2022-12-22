@@ -49,6 +49,20 @@ public class ImGuiWindowManager : IImGuiWindowManager, IDisposable
         
         _fullscreenWindow = window;
     }
+    
+    public T? GetWindow<T>() where T : IImGuiWindow
+    {
+        foreach(var window in _subWindows)
+        {
+            if(window is T)
+            {
+                return (T)window;
+            }
+        }
+        
+        return default;
+    }
+    
 
     public void ClearFullscreenWindow()
     {

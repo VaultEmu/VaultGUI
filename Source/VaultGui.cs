@@ -13,7 +13,8 @@ public class VaultGui : IGuiApplication
     private readonly TimeProvider _timeProvider;
     private readonly CommandList _mainCommandList;
     private readonly ILogger _logger;
-    private readonly VaultCoreLoader _vaultCoreLoader;
+    private readonly VaultCoreManager _vaultCoreManager;
+    private readonly SoftwareRendering _softwareRendering;
     
     private SDL_DisplayMode[] _fullScreenDisplayMode;
     private IGuiApplication.ApplicationWindowMode? _nextWindowModeToSet;
@@ -28,9 +29,9 @@ public class VaultGui : IGuiApplication
             _logger.Log("Vault GUI - Multi System Emulator\n");
             _logger.Log("Initialising");
         
-            var vsync = true;
+            var vsync = false;
 #if DEBUG
-        var debugGraphicsDevice = true;
+            var debugGraphicsDevice = true;
 #else
             var debugGraphicsDevice = false;
 #endif
@@ -80,14 +81,22 @@ public class VaultGui : IGuiApplication
             _window.Resized += OnWindowOnResized;
             
             _timeProvider = new TimeProvider();
-            _vaultCoreLoader = new VaultCoreLoader();
+            _vaultCoreManager = new VaultCoreManager();
+            
+            _vaultCoreManager.RefreshAvailableVaultCores();
 
             _imGuiUiController = new ImGuiUiController(_graphicsDevice, _window);
             _mainCommandList = _graphicsDevice.ResourceFactory.CreateCommandList();
             
+            _softwareRendering = new SoftwareRendering();
+            
             _fullScreenDisplayMode = Array.Empty<SDL_DisplayMode>();
             
             CalculateFullScreenDisplayModeToUse();
+            
+            //TEMP: Load core
+            var exampleCoreData = _vaultCoreManager._AvailableCores.First(x => x.CoreName == "Example Core");
+            _vaultCoreManager.LoadVaultCore(exampleCoreData);
 
             _logger.Log("Initialising Finished");
         }
@@ -148,11 +157,12 @@ public class VaultGui : IGuiApplication
                     break;
                 }
 
-                _timeProvider.Update();
+                _timeProvider.OnFrameUpdate();
+                _vaultCoreManager.Update();
                 
                 UpdateTitle();
 
-                _imGuiUiController.UpdateUi(snapshot);
+                _imGuiUiController.UpdateUi(snapshot, _timeProvider.RenderFrameDeltaTime);
 
                 Render();
                 
@@ -221,9 +231,13 @@ public class VaultGui : IGuiApplication
 
     private void UpdateTitle()
     {
-        var fps = _timeProvider.AverageFps;
-        var ms = _timeProvider.AverageDeltaTime * 1000f;
-        _window.Title = $"Vault Gui - {ms:0.00} ms/frame ({fps:0.0} FPS)";
+        var renderFps = _timeProvider.AverageRenderFrameFps;
+        var renderMs = _timeProvider.AverageFrameDeltaTime * 1000f;
+        
+        var coreFps = _timeProvider.AverageCoreUpdateFps;
+        var coreMs = _timeProvider.AverageCoreUpdateDeltaTime * 1000f;
+        
+        _window.Title = $"Vault Gui - Render: {renderMs:0.00} ms/frame ({renderFps:0.0} FPS) | Update: {coreMs:0.00} ms/frame ({coreFps:0.0} FPS)";
     }
 
     private void Render()
@@ -244,6 +258,7 @@ public class VaultGui : IGuiApplication
     private void ShutDown()
     {
         _logger.Log("Shutting Down");
+        _vaultCoreManager.UnloadVaultCore();
         _graphicsDevice.WaitForIdle();
         _mainCommandList.Dispose();
         _imGuiUiController.Dispose();

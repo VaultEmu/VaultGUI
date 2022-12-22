@@ -1,9 +1,7 @@
 ﻿namespace Vault;
 
 public static class EntryPoint
-{ 
-    
-    
+{
     private static void Main()
     {
         DpiAwareUtils.SetProcessDPIAware();
@@ -22,7 +20,6 @@ public static class EntryPoint
         {
             logger.LogFatal("Unhandled Exception Thrown", e);
         }
-        
     }
 }
 

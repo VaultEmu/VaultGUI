@@ -8,15 +8,18 @@ using Veldrid;
 
 namespace Vault;
 
-public partial class TextureManager : ITextureManager, IImGuiTextureManager
+public partial class TextureManager : ITextureManager, IImGuiTextureManager , IDisposable
 {
     private readonly GraphicsDevice _parentGraphicsDevice;
     private readonly ImGuiRenderer _parentImGuiRenderer;
+    private readonly CommandList _copyTextureCommandList;
     
     public TextureManager(GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
     {
         _parentGraphicsDevice = graphicsDevice;
         _parentImGuiRenderer = imGuiRenderer;
+        
+        _copyTextureCommandList = _parentGraphicsDevice.ResourceFactory.CreateCommandList();
 
         GlobalFeatures.RegisterFeature(this);
     }
@@ -157,8 +160,7 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
         //Do fast update copy
         if(texture2D.TextureCpuWriteData != null)
         {
-            CommandList cl = _parentGraphicsDevice.ResourceFactory.CreateCommandList();
-            cl.Begin();
+            _copyTextureCommandList.Begin();
             
             var pixelSize = GetSizeInBytes(texture2D.Format);
             
@@ -186,26 +188,26 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
                     }
                     _parentGraphicsDevice.Unmap(texture2D.TextureCpuWriteData.StagingTexture, level);
 
-                    cl.CopyTexture(
+                    _copyTextureCommandList.CopyTexture(
                         texture2D.TextureCpuWriteData.StagingTexture, 0, 0, 0, level, 0,
                         texture2D.VeldridTexture, 0, 0, 0, level, 0,
                         mipWidth, mipHeight, 1, 1);
 
                 }
             }
-            cl.End();
+            _copyTextureCommandList.End();
             
-            _parentGraphicsDevice.SubmitCommands(cl);
-            cl.Dispose();
+            _parentGraphicsDevice.SubmitCommands(_copyTextureCommandList);
         }
     }
     
     private void WritePixelData<T>(
         Texture2DImpl texture2D,
         T[] pixelData,
-        uint x, uint y,
-        uint width, uint height,
-        uint mipLevel = 0) where T : struct
+        uint pixelDataWidth, uint pixelDataHeight,
+        uint targetX, uint targetY,
+        uint mipLevel = 0)
+        where T : struct
     {
         if(texture2D.IsWritingPixelsToTexture == false)
         {
@@ -219,32 +221,52 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
             
             GetMipDimensions(texture2D.VeldridTexture, mipLevel, out var mipWidth, out var mipHeight);
             
-            if(x >= mipWidth)
+            if(targetX >= mipWidth)
             {
-                throw new ArgumentException($"X Pos is outside width for mip level {mipLevel} of this texture - x: {x}, width{width}, mipwidth: {mipWidth}");
+                throw new ArgumentException($"X Pos is outside width for mip level {mipLevel} of this texture - x: {targetX}, width{pixelDataWidth}, mipwidth: {mipWidth}");
             }
             
-            if(y >= mipHeight)
+            if(targetY >= mipHeight)
             {
-                throw new ArgumentException($"y Pos is outside width for mip level {mipLevel} of this texture - y: {y}, height{height}, mipHeight: {mipHeight}");
+                throw new ArgumentException($"y Pos is outside width for mip level {mipLevel} of this texture - y: {targetY}, height{pixelDataHeight}, mipHeight: {mipHeight}");
             }
             
-            if((x + width) > mipWidth)
+            if((targetX + pixelDataWidth) > mipWidth)
             {
-                throw new ArgumentException($"X Pos + width is outside width for mip level {mipLevel} of this texture - x: {x}, width{width}, mipwidth: {mipWidth}");
+                throw new ArgumentException($"X Pos + width is outside width for mip level {mipLevel} of this texture - x: {targetX}, width{pixelDataWidth}, mipwidth: {mipWidth}");
             }
             
-            if((y + height) > mipHeight)
+            if((targetY + pixelDataHeight) > mipHeight)
             {
-                throw new ArgumentException($"y Pos + height is outside width for mip level {mipLevel} of this texture - y: {y}, height{height}, mipHeight: {mipHeight}");
+                throw new ArgumentException($"y Pos + height is outside width for mip level {mipLevel} of this texture - y: {targetY}, height{pixelDataHeight}, mipHeight: {mipHeight}");
             }
-
+            
             var sourcePixels = MemoryMarshal.Cast<T, byte>(pixelData);
             var destPixels = new Span<byte>(mipLayerData);
             var pixelSize = (uint)Marshal.SizeOf<T>();
+            
+            unsafe
+            {
+                fixed (void* sourcePin = &MemoryMarshal.GetReference(sourcePixels), destPin = &MemoryMarshal.GetReference(destPixels))
+                {
+                    if(pixelDataWidth == mipWidth)
+                    {
+                        var dstStart = (byte*)destPin + targetY * mipWidth * pixelSize;
+                        Unsafe.CopyBlock(dstStart, sourcePin, pixelDataHeight * pixelDataWidth * pixelSize);
+                    }
+                    else
+                    {
+                        for(var row = 0; row < pixelDataHeight; ++row)
+                        {
+                            var dstStart = (byte*)destPin + targetX * pixelSize + (targetY + row) * mipWidth * pixelSize;
+                            var srcStart = (byte*)sourcePin + row * pixelDataWidth * pixelSize;
+                            Unsafe.CopyBlock(dstStart, srcStart, pixelDataWidth * pixelSize);
+                        } 
+                    }
+            
+                }
+            }
 
-            DoPixelDataCopy(sourcePixels, destPixels, pixelSize, x, y, width, height, mipWidth, mipHeight);
-           
         }
         else
         {
@@ -252,11 +274,11 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
             _parentGraphicsDevice.UpdateTexture(
                 texture2D.VeldridTexture,
                 pixelData,
-                x,
-                y,
+                targetX,
+                targetY,
                 0,
-                width,
-                height,
+                pixelDataWidth,
+                pixelDataHeight,
                 1,
                 mipLevel,
                 0);
@@ -275,15 +297,13 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
         uint width,
         uint height)
     {
-        var cl = _parentGraphicsDevice.ResourceFactory.CreateCommandList();
-        cl.Begin();
-        cl.CopyTexture(
+        _copyTextureCommandList.Begin();
+        _copyTextureCommandList.CopyTexture(
             sourceTexture.VeldridTexture, srcX, srcY, 0, srcMipLevel, 0,
             destination.VeldridTexture, dstX, dstY, 0, dstMipLevel, 0,
             width, height, 1, 1);
-        cl.End();
-        _parentGraphicsDevice.SubmitCommands(cl);
-        cl.Dispose();
+        _copyTextureCommandList.End();
+        _parentGraphicsDevice.SubmitCommands(_copyTextureCommandList); ;
     }
     
     private unsafe void CreateTextureFromBytesViaStaging(byte[] pixelData, uint width, uint height, bool mipmaps, bool srgb, bool keepStagingTexture, 
@@ -308,9 +328,8 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
 
         finalTexture = factory.CreateTexture(
             TextureDescription.Texture2D(width, height, mipLevels, 1, format, finalTextureUsageFlags));
-
-        var cl = _parentGraphicsDevice.ResourceFactory.CreateCommandList();
-        cl.Begin();
+        
+        _copyTextureCommandList.Begin();
 
         var pixelSpan = new Span<byte>(pixelData);
 
@@ -334,7 +353,7 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
 
             _parentGraphicsDevice.Unmap(stagingTexture, 0);
 
-            cl.CopyTexture(
+            _copyTextureCommandList.CopyTexture(
                 stagingTexture, 0, 0, 0, 0, 0,
                 finalTexture, 0, 0, 0, 0, 0,
                 width, height, 1, 1);
@@ -342,13 +361,12 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
 
         if(mipmaps)
         {
-            cl.GenerateMipmaps(finalTexture);
+            _copyTextureCommandList.GenerateMipmaps(finalTexture);
         }
 
 
-        cl.End();
-        _parentGraphicsDevice.SubmitCommands(cl);
-        cl.Dispose();
+        _copyTextureCommandList.End();
+        _parentGraphicsDevice.SubmitCommands(_copyTextureCommandList);
 
         if(keepStagingTexture == false)
         {
@@ -379,22 +397,20 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
     
     private unsafe void PopulatePixelArrayFromTexture(Texture texture, Texture stagingTexture, byte[][] pixelData)
     {
-        CommandList cl = _parentGraphicsDevice.ResourceFactory.CreateCommandList();
-        cl.Begin();
+        _copyTextureCommandList.Begin();
         for (uint level = 0; level < texture.MipLevels; level++)
         {
             //Make sure staging texture has latest data
             GetMipDimensions(texture, level, out var mipWidth, out var mipHeight);
-            cl.CopyTexture(
+            _copyTextureCommandList.CopyTexture(
                 texture, 0, 0, 0, level, 0,
                 stagingTexture, 0, 0, 0, level, 0,
                 mipWidth, mipHeight, 1, 1);
         }
         
-        cl.End();
-        _parentGraphicsDevice.SubmitCommands(cl);
-        cl.Dispose();
-        
+        _copyTextureCommandList.End();
+        _parentGraphicsDevice.SubmitCommands(_copyTextureCommandList);
+
         var pixelSize = GetSizeInBytes(GetVaultTextureFormatFromPixelFormat(texture.Format));
         
         for (uint level = 0; level < texture.MipLevels; level++)
@@ -426,55 +442,7 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
             }
         }
     }
-    
-    public static unsafe void DoPixelDataCopy(
-        Span<byte> sourcePixelSpan,
-        Span<byte> destPixelSpan,
-        uint pixelDataSize,
-        uint targetX, uint targetY,
-        uint sourceWidth, uint sourceHeight,
-        uint destWidth, uint destHeight)
-    {
-        if(targetX >= destWidth)
-        {
-            throw new ArgumentException($"X Pos is outside width for dest target - x: {targetX}, sourceWidth{sourceWidth}, destWidth: {destWidth}");
-        }
-            
-        if(targetY >= destHeight)
-        {
-            throw new ArgumentException($"Y Pos is outside height for dest target - y: {targetY}, sourceHeight{sourceHeight}, destHeight: {destHeight}");
-        }
-            
-        if((targetX + sourceWidth) > destWidth)
-        {
-            throw new ArgumentException($"X Pos  + sourceWidth is outside width for dest target - x: {targetX}, sourceWidth{sourceWidth}, destWidth: {destWidth}");
-        }
-            
-        if((targetY + sourceHeight) > destHeight)
-        {
-            throw new ArgumentException($"Y Pos + sourceHeight is outside height for dest target - y: {targetY}, sourceHeight{sourceHeight}, destHeight: {destHeight}");
-        }
 
-        fixed (void* sourcePin = &MemoryMarshal.GetReference(sourcePixelSpan), destPin = &MemoryMarshal.GetReference(destPixelSpan))
-        {
-            if(sourceWidth == destWidth)
-            {
-                var dstStart = (byte*)destPin + targetY * destWidth * pixelDataSize;
-                Unsafe.CopyBlock(dstStart, sourcePin, sourceHeight * sourceWidth * pixelDataSize);
-            }
-            else
-            {
-                for(var row = 0; row < sourceHeight; ++row)
-                {
-                    var dstStart = (byte*)destPin + targetX * pixelDataSize + (targetY + row) * destWidth * pixelDataSize;
-                    var srcStart = (byte*)sourcePin + row * sourceWidth * pixelDataSize;
-                    Unsafe.CopyBlock(dstStart, srcStart, sourceWidth * pixelDataSize);
-                } 
-            }
-            
-        }
-    }
-    
     private static void GetMipDimensions(Texture tex, uint mipLevel, out uint width, out uint height)
     {
         if(mipLevel == 0)
@@ -625,5 +593,10 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager
             default:
                 throw new InvalidOperationException("Pixel Format does not have a Vault equivalent");
         }
+    }
+
+    public void Dispose()
+    {
+        _copyTextureCommandList.Dispose();
     }
 }

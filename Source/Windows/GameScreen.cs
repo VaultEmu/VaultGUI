@@ -46,11 +46,11 @@ public class GameScreen : IImGuiWindow
 
     public GameScreen()
     {
-        _textureManager = GlobalFeatures.Resolver.GetFeature<ITextureManager>();
-        _imguiTextureManager = GlobalFeatures.Resolver.GetFeature<IImGuiTextureManager>();
-        _imGuiWindowManager = GlobalFeatures.Resolver.GetFeature<IImGuiWindowManager>();
-        _guiApplication = GlobalFeatures.Resolver.GetFeature<IGuiApplication>();
-        _logger = GlobalFeatures.Resolver.GetFeature<ILogger>();
+        _textureManager = GlobalFeatures.Resolver.GetFeature<ITextureManager>() ?? throw new InvalidOperationException("Unable to acquire ITextureManager Feature");
+        _imguiTextureManager = GlobalFeatures.Resolver.GetFeature<IImGuiTextureManager>() ?? throw new InvalidOperationException("Unable to acquire IImGuiTextureManager Feature");
+        _imGuiWindowManager = GlobalFeatures.Resolver.GetFeature<IImGuiWindowManager>() ?? throw new InvalidOperationException("Unable to acquire IImGuiWindowManager Feature");
+        _guiApplication = GlobalFeatures.Resolver.GetFeature<IGuiApplication>() ?? throw new InvalidOperationException("Unable to acquire IGuiApplication Feature");
+        _logger = GlobalFeatures.Resolver.GetFeature<ILogger>() ?? throw new InvalidOperationException("Unable to acquire ILogger Feature");
         
         _testCardTexture = _textureManager.LoadTextureFromDisk(@".\Assets\TestCard.png", false);
     }
