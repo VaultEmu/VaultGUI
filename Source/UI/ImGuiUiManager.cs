@@ -1,6 +1,5 @@
 using System.Numerics;
 using ImGuiNET;
-using VaultCore.CoreAPI;
 using Veldrid;
 using Veldrid.Sdl2;
 using VaultCore.Rendering;
@@ -9,34 +8,26 @@ using VaultCore.ImGuiWindowsAPI;
 namespace Vault;
 
 
-public class ImGuiUiController : IDisposable
+public class ImGuiUiManager : IDisposable
 {
-    private readonly ImGuiRenderer _imGuiRenderer;
-    private readonly GraphicsDevice _parentGraphicsDevice;
     private readonly Sdl2Window _parentWindow;
-    private readonly CommandList _uiCommandList;
     private readonly ImGuiWindowManager _imGuiWindowManager;
+    private readonly ImGuiInput _ImGuiInput;
     
     private readonly TextureManager _textureManager;
     private readonly Texture2D _backgroundTexture;
     private readonly ImGuiTextureRef _backgroundTextureImGuiRef;
+    
+    public ImGuiWindowManager ImGuiWindowManager => _imGuiWindowManager;
 
-    public ImGuiUiController(GraphicsDevice graphicsDevice, Sdl2Window window)
+    public ImGuiUiManager(TextureManager textureManager, Sdl2Window window)
     {
-        _parentGraphicsDevice = graphicsDevice;
+        _textureManager = textureManager;
         _parentWindow = window;
-        _imGuiRenderer = new ImGuiRenderer(graphicsDevice, 
-            graphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
-            window.Width, window.Height,
-            DpiAwareUtils.GetDPIScale(window));
         _imGuiWindowManager = new ImGuiWindowManager();
-        
-        _uiCommandList = _parentGraphicsDevice.ResourceFactory.CreateCommandList();
-        _parentWindow.Resized += OnWindowOnResized;
+        _ImGuiInput = new ImGuiInput();
 
         ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        
-        _textureManager = new TextureManager(_parentGraphicsDevice, _imGuiRenderer);
         
         _backgroundTexture = _textureManager.LoadTextureFromDisk(@".\Assets\VaultBg.png");
         _backgroundTextureImGuiRef = _textureManager.GetOrCreateImGuiTextureRefForTexture(_backgroundTexture);
@@ -44,14 +35,13 @@ public class ImGuiUiController : IDisposable
         AddDefaultWindows();
     }
     
-    public void UpdateUi(InputSnapshot snapshot, float frameDeltaTime)
+    public void Update(InputSnapshot snapshot, double deltaSeconds)
     {
-        _imGuiRenderer.Update(frameDeltaTime, snapshot);
-        
+        _ImGuiInput.Update(snapshot, deltaSeconds);
         _imGuiWindowManager.UpdateWindows();
     }
 
-    public void RenderUi()
+    public void GenerateImGuiRenderCalls()
     {
         DrawBackgroundImage();
 
@@ -61,8 +51,6 @@ public class ImGuiUiController : IDisposable
         DrawMenuBar();
         
         _imGuiWindowManager.DrawWindows();
-
-        CreateAndSubmitRenderCommands();
     }
 
     private void DrawBackgroundImage()
@@ -84,27 +72,12 @@ public class ImGuiUiController : IDisposable
 
     private void AddDefaultWindows()
     {
-        _imGuiWindowManager.RegisterWindow(new GameScreen());
-    }
-
-    private void CreateAndSubmitRenderCommands()
-    {
-        _uiCommandList.Begin();
-        _uiCommandList.SetFramebuffer(_parentGraphicsDevice.MainSwapchain.Framebuffer);
-        _imGuiRenderer.Render(_parentGraphicsDevice, _uiCommandList);
-        _uiCommandList.End();
-
-        _parentGraphicsDevice.SubmitCommands(_uiCommandList);
+       
     }
 
     public void Dispose()
     {
-        _imGuiRenderer.Dispose();
-        _uiCommandList.Dispose();
         _imGuiWindowManager.Dispose();
-        _textureManager.Dispose();
-
-        //Dont dispose _parentGraphicsDevice, we do not own it, only have a reference to it
     }
 
     private void DrawMenuBar()
@@ -181,7 +154,7 @@ public class ImGuiUiController : IDisposable
             ImGui.Dummy(new Vector2(0.0f, 10.0f));
             ImGui.Dummy(new Vector2(0.0f, 0.0f));
 
-            ImGui.SameLine(ImGui.GetWindowWidth() - 90);
+            ImGui.SameLine(ImGui.GetWindowWidth() * 0.5f - 40.0f);
 
             if(ImGui.Button("OK", new Vector2(80, 0)))
             {
@@ -192,10 +165,5 @@ public class ImGuiUiController : IDisposable
 
             ImGui.EndPopup();
         }
-    }
-
-    private void OnWindowOnResized()
-    {
-        _imGuiRenderer.WindowResized(_parentWindow.Width, _parentWindow.Height);
     }
 }

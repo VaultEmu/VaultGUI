@@ -5,7 +5,7 @@ using NLog.Targets;
 
 namespace Vault;
 
-public class Logger : VaultCore.CoreAPI.ILogger
+public class Logger : VaultCore.Features.ILogging
 {
     private readonly NLog.Logger _loggerImpl;
     private readonly StringBuilder _stackTraceStringBuilder = new StringBuilder();
@@ -53,11 +53,8 @@ public class Logger : VaultCore.CoreAPI.ILogger
         LogManager.Configuration = config;
         
         _loggerImpl = LogManager.GetCurrentClassLogger();
-        
-        GlobalFeatures.RegisterFeature(this);
     }
-    
-    
+
     public void Log(string message)
     {
         _loggerImpl.Info(message);
@@ -179,5 +176,15 @@ public class Logger : VaultCore.CoreAPI.ILogger
         }
         
         return _stackTraceStringBuilder.ToString();
+    }
+
+    public void OnCoreAcquiresFeature(Type coreType, Type featureType, List<Type> allCoreFeaturesNeeded)
+    {
+        
+    }
+
+    public void OnCoreReleasesFeature(Type coreType, Type featureType, List<Type> allCoreFeaturesNeeded)
+    {
+       
     }
 }

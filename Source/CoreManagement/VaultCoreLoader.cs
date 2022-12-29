@@ -1,4 +1,3 @@
-using System.Reflection;
 using McMaster.NETCore.Plugins;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -8,10 +7,10 @@ namespace Vault;
 
 public class LoadedVaultCore
 {
-    public IVaultCore VaultCore;
+    public VaultCoreBase VaultCore;
     public VaultCoreData VaultCoreData;
 
-    public LoadedVaultCore(IVaultCore vaultCore, VaultCoreData vaultCoreData)
+    public LoadedVaultCore(VaultCoreBase vaultCore, VaultCoreData vaultCoreData)
     {
         VaultCore = vaultCore;
         VaultCoreData = vaultCoreData;
@@ -24,7 +23,7 @@ public class VaultCoreLoader
     {
         public PluginLoader VaultCorePluginLoader;
         
-        public LoadedVaultCoreInternal(IVaultCore vaultCore, VaultCoreData vaultCoreData, PluginLoader vaultCorePluginLoader) : base(vaultCore, vaultCoreData)
+        public LoadedVaultCoreInternal(VaultCoreBase vaultCore, VaultCoreData vaultCoreData, PluginLoader vaultCorePluginLoader) : base(vaultCore, vaultCoreData)
         {
             VaultCorePluginLoader = vaultCorePluginLoader;
         }
@@ -34,13 +33,13 @@ public class VaultCoreLoader
     
     private readonly List<VaultCoreData> _availableCores = new List<VaultCoreData>();
     
-    private readonly ILogger _logger;
+    private readonly Logger _logger;
 
     public IReadOnlyList<VaultCoreData> AvailableCores => _availableCores;
 
-    public VaultCoreLoader()
+    public VaultCoreLoader(Logger logger)
     {
-        _logger = GlobalFeatures.Resolver.GetFeature<ILogger>() ?? throw new InvalidOperationException("Unable to get ILogger Feature");
+        _logger = logger;
     }
     
     public void RefreshAvailableVaultCores()
@@ -90,7 +89,7 @@ public class VaultCoreLoader
                         var Version = (string?)entry["Version"];
                         var Description = (string?)entry["Description"];
                         var CoreClassName = (string?)entry["CoreClassName"];
-                    
+
                         if(vaultCoreName == null)
                         {
                             _logger.LogWarning($"   - Unable to read 'VaultCoreName' item in vaultCore json file. Skipping...");
@@ -120,9 +119,24 @@ public class VaultCoreLoader
                             _logger.LogWarning($"   - Unable to read 'CoreClassName' item in vaultCore json file. Skipping...");
                             continue;   
                         }
+                        
+                        var coreFeaturesUsed = new List<string>();
+                        
+                        var coreFeaturesUsedArray = (JArray)entry["CoreFeaturesUsed"]!;
+                        
+                        foreach(var featureElement in coreFeaturesUsedArray)
+                        {
+                            coreFeaturesUsed.Add((string)featureElement!);
+                        }
 
-                        _logger.Log($"   Found Core {vaultCoreName} ({CoreClassName}) - {SystemName} - {Description} - {Version}");
-                        _availableCores.Add(new VaultCoreData(vaultCoreName, SystemName, Version, Description, pluginDll, CoreClassName));
+                        _logger.Log($"   Found Core {vaultCoreName} ({CoreClassName})\n" +
+                                    $"      - System Name: {SystemName}\n" +
+                                    $"      - Description: {Description}\n" +
+                                    $"      - Version: {Version}\n" +
+                                    $"      - Features Used: {string.Join(", ", coreFeaturesUsed)}");
+                        
+                        coresFound.Add(new VaultCoreData(vaultCoreName, SystemName, Version, Description, 
+                            pluginDll, CoreClassName, coreFeaturesUsed.ToArray()));
                     }
                 }
             }
@@ -156,25 +170,25 @@ public class VaultCoreLoader
             var vaultCoreClasses = vaultCorePluginLoader
                 .LoadDefaultAssembly()
                 .GetTypes()
-                .Where(t => typeof(IVaultCore).IsAssignableFrom(t) && !t.IsAbstract && coreToLoad.CoreClassName.Equals(t.Name, StringComparison.OrdinalIgnoreCase))
+                .Where(t => typeof(VaultCoreBase).IsAssignableFrom(t) && !t.IsAbstract && coreToLoad.CoreClassName.Equals(t.Name, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         
             if(vaultCoreClasses.Count == 0)
             {
-                _logger.LogError($"   - Error when loading Core: Core DLL contains no class derived from IVaultCore named {coreToLoad.CoreClassName}");
+                _logger.LogError($"   - Error when loading Core: Core DLL contains no class derived from VaultCoreBase named {coreToLoad.CoreClassName}");
                 CleanupLoadedVaultCore(vaultCorePluginLoader);
                 return null;
             }
         
             if(vaultCoreClasses.Count > 1)
             {
-                _logger.LogError($"   - Error when loading Core: Core DLL contains multiple class derived from IVaultCore named {coreToLoad.CoreClassName}.");
+                _logger.LogError($"   - Error when loading Core: Core DLL contains multiple class derived from VaultCoreBase named {coreToLoad.CoreClassName}.");
                 CleanupLoadedVaultCore(vaultCorePluginLoader);
                 return null;
             }
         
             // This assumes the implementation of IPlugin has a parameterless constructor
-            var loadedCore = (IVaultCore?)Activator.CreateInstance(vaultCoreClasses[0]);
+            var loadedCore = (VaultCoreBase?)Activator.CreateInstance(vaultCoreClasses[0]);
         
             if(loadedCore == null)
             {

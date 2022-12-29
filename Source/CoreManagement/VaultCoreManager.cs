@@ -1,24 +1,25 @@
-﻿using VaultCore.CoreAPI;
-
-namespace Vault;
+﻿namespace Vault;
 
 //Feature for exposing Vault Core Management
-public class VaultCoreManager : IFeature
+public class VaultCoreManager
 {
     private readonly TimeProvider _timeProvider;
-    private readonly ILogger _logger;
+    private readonly Logger _logger;
     private readonly VaultCoreLoader _vaultCoreLoader;
     private LoadedVaultCore? _currentlyLoadedCore;
     private ulong _prevHighResTimerSample;
     private double _updateAccum;
     
-    public IReadOnlyList<VaultCoreData> _AvailableCores => _vaultCoreLoader.AvailableCores; 
+    public IReadOnlyList<VaultCoreData> AvailableCores => _vaultCoreLoader.AvailableCores; 
+    
+    public VaultCoreFeatureResolver FeatureResolver { get; }
 
-    public VaultCoreManager()
+    public VaultCoreManager(TimeProvider timeProvider, Logger logger)
     {
-        _timeProvider = GlobalFeatures.Resolver.GetFeature<TimeProvider>();
-        _logger = GlobalFeatures.Resolver.GetFeature<ILogger>();
-        _vaultCoreLoader = new VaultCoreLoader();
+        _timeProvider = timeProvider;
+        _logger = logger;
+        _vaultCoreLoader = new VaultCoreLoader(_logger);
+        FeatureResolver = new VaultCoreFeatureResolver();
         _updateAccum = 0.0;
         _prevHighResTimerSample = _timeProvider.HighResolutionTimerSample;
     }
@@ -35,10 +36,10 @@ public class VaultCoreManager : IFeature
         
         if(_currentlyLoadedCore != null)
         {
-            _currentlyLoadedCore.VaultCore.Initialise(GlobalFeatures.Resolver);
+            _currentlyLoadedCore.VaultCore.Initialise(FeatureResolver);
         }
     }
-    
+
     public void UnloadVaultCore()
     {
         if(_currentlyLoadedCore == null)

@@ -1,4 +1,4 @@
-using VaultCore.CoreAPI;
+using VaultCore.Features;
 
 namespace Vault;
 
@@ -40,8 +40,6 @@ public class TimeProvider : IHighResTimer
         _startupTimeSample = _prevFrameDeltaTimeSample;
         _averageRenderFpsTimer = new AverageTimeCounter(60);
         _averageCoreUpdateFpsTimer = new AverageTimeCounter();
-        
-        GlobalFeatures.RegisterFeature(this);
     }
     
     public void OnFrameUpdate()
@@ -58,5 +56,15 @@ public class TimeProvider : IHighResTimer
     {
         _lastCoreUpdateDeltaTime = deltaTime;
         _averageCoreUpdateDeltaTime = _averageCoreUpdateFpsTimer.Update(_lastCoreUpdateDeltaTime);
+    }
+
+    public void OnCoreAcquiresFeature(Type coreType, Type featureType, List<Type> allCoreFeaturesNeeded)
+    {
+        
+    }
+
+    public void OnCoreReleasesFeature(Type coreType, Type featureType, List<Type> allCoreFeaturesNeeded)
+    {
+        
     }
 }

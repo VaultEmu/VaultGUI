@@ -10,11 +10,6 @@ public class ImGuiWindowManager : IImGuiWindowManager, IDisposable
     
     public bool IsAnyWindowFullScreen => _fullscreenWindow != null;
     
-    public ImGuiWindowManager()
-    {
-        GlobalFeatures.RegisterFeature(this);
-    }
-    
     public IImGuiWindow? GetFullscreenWindow()
     {
         return _fullscreenWindow;
@@ -130,5 +125,15 @@ public class ImGuiWindowManager : IImGuiWindowManager, IDisposable
         {
             window.Dispose();
         }
+    }
+
+    public void OnCoreAcquiresFeature(Type coreType, Type featureType, List<Type> allCoreFeaturesNeeded)
+    {
+        
+    }
+
+    public void OnCoreReleasesFeature(Type coreType, Type featureType, List<Type> allCoreFeaturesNeeded)
+    {
+        
     }
 }

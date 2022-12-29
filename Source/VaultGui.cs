@@ -1,41 +1,36 @@
-using VaultCore.CoreAPI;
 using Veldrid;
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
 
 namespace Vault;
 
-public class VaultGui : IGuiApplication
+public class VaultGui
 {
     private readonly Sdl2Window _window;
-    private readonly GraphicsDevice _graphicsDevice;
-    private readonly ImGuiUiController _imGuiUiController;
     private readonly TimeProvider _timeProvider;
-    private readonly CommandList _mainCommandList;
-    private readonly ILogger _logger;
+    private readonly Logger _logger;
+    private readonly VaultGUIGraphics _vaultGuiGraphics;
     private readonly VaultCoreManager _vaultCoreManager;
-    private readonly SoftwareRendering _softwareRendering;
-    
-    private SDL_DisplayMode[] _fullScreenDisplayMode;
-    private IGuiApplication.ApplicationWindowMode? _nextWindowModeToSet;
+    private readonly ImGuiUiManager _imGuiUiManager;
+    private readonly VaultCoreSoftwareRendering _vaultCoreSoftwareRendering;
 
-    public VaultGui(ILogger logger)
+    private SDL_DisplayMode[] _fullScreenDisplayMode;
+    private WindowState? _nextWindowModeToSet;
+
+    public VaultGui(Logger logger)
     {
         _logger = logger;
         try
         {
-            GlobalFeatures.RegisterFeature(this);
-            
             _logger.Log("Vault GUI - Multi System Emulator\n");
             _logger.Log("Initialising");
-        
+            
             var vsync = false;
 #if DEBUG
             var debugGraphicsDevice = true;
 #else
             var debugGraphicsDevice = false;
 #endif
-
             var graphicDeviceOptions = new GraphicsDeviceOptions(
                 debugGraphicsDevice,
                 null,
@@ -43,59 +38,53 @@ public class VaultGui : IGuiApplication
                 ResourceBindingModel.Improved,
                 true,
                 true);
-        
+
+            
             var preferredBackend = VeldridStartup.GetPlatformDefaultBackend();
 
             // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
             Sdl2Native.SDL_Init(SDLInitFlags.Timer | SDLInitFlags.Video);
-        
-            if(preferredBackend == GraphicsBackend.OpenGL || 
+
+            if(preferredBackend == GraphicsBackend.OpenGL ||
                preferredBackend == GraphicsBackend.OpenGLES)
             {
                 VeldridStartup.SetSDLGLContextAttributes(graphicDeviceOptions, preferredBackend);
             }
-            
-            var flags = 
-                SDL_WindowFlags.OpenGL | 
-                SDL_WindowFlags.Resizable | 
+
+            var flags =
+                SDL_WindowFlags.OpenGL |
+                SDL_WindowFlags.Resizable |
                 SDL_WindowFlags.AllowHighDpi;
+
+            _logger.Log("Init Window");
             
             _window = new Sdl2Window(
                 "VaultGui",
                 50, 50,
                 1280, 720,
                 flags, false);
-            
-            _graphicsDevice = VeldridStartup.CreateGraphicsDevice(_window, graphicDeviceOptions, preferredBackend);
-
-            if(_graphicsDevice == null)
-            {
-                throw new InvalidOperationException("Veldrid Graphics Device Failed to initialise");
-            }
 
             if(_window == null)
             {
                 throw new InvalidOperationException("Veldrid Window Failed to initialise");
             }
-
-            _window.Resized += OnWindowOnResized;
             
+            _fullScreenDisplayMode = Array.Empty<SDL_DisplayMode>();
+            CalculateFullScreenDisplayModeToUse();
+            
+            //Create Main Components
+            _vaultGuiGraphics = new VaultGUIGraphics(_logger, _window, graphicDeviceOptions, preferredBackend);
+            _imGuiUiManager = new ImGuiUiManager(_vaultGuiGraphics.TextureManager, _window);
             _timeProvider = new TimeProvider();
-            _vaultCoreManager = new VaultCoreManager();
+            _vaultCoreManager = new VaultCoreManager(_timeProvider, _logger);
+            _vaultCoreSoftwareRendering = new VaultCoreSoftwareRendering(_vaultGuiGraphics.TextureManager, _imGuiUiManager, this);
+
+            SetupCoreFeatureResolver();
             
             _vaultCoreManager.RefreshAvailableVaultCores();
 
-            _imGuiUiController = new ImGuiUiController(_graphicsDevice, _window);
-            _mainCommandList = _graphicsDevice.ResourceFactory.CreateCommandList();
-            
-            _softwareRendering = new SoftwareRendering();
-            
-            _fullScreenDisplayMode = Array.Empty<SDL_DisplayMode>();
-            
-            CalculateFullScreenDisplayModeToUse();
-            
             //TEMP: Load core
-            var exampleCoreData = _vaultCoreManager._AvailableCores.First(x => x.CoreName == "Example Core");
+            var exampleCoreData = _vaultCoreManager.AvailableCores.First(x => x.CoreName == "Example Core");
             _vaultCoreManager.LoadVaultCore(exampleCoreData);
 
             _logger.Log("Initialising Finished");
@@ -106,7 +95,18 @@ public class VaultGui : IGuiApplication
             throw new ShutdownDueToFatalErrorException("Error During Initialisation");
         }
     }
-    
+
+    private void SetupCoreFeatureResolver()
+    {
+        var featureResolver = _vaultCoreManager.FeatureResolver;
+        
+        featureResolver.RegisterFeatureImplementation(_logger); //ILogging
+        featureResolver.RegisterFeatureImplementation(_timeProvider); //IHighResTimer
+        featureResolver.RegisterFeatureImplementation(_vaultGuiGraphics.TextureManager); //ITextureManager, IImGuiTextureManager
+        featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiWindowManager); //IImGuiWidnowManager
+        featureResolver.RegisterFeatureImplementation(_vaultCoreSoftwareRendering); //ISoftwareRendering
+    }
+
     private unsafe void CalculateFullScreenDisplayModeToUse()
     {
         _logger.Log("Calculating Full Screen Display Mode");
@@ -157,15 +157,18 @@ public class VaultGui : IGuiApplication
                     break;
                 }
 
+                //UPDATE
+                _vaultGuiGraphics.OnNewFrameStart();
                 _timeProvider.OnFrameUpdate();
                 _vaultCoreManager.Update();
-                
+                _imGuiUiManager.Update(snapshot, _timeProvider.RenderFrameDeltaTime);
                 UpdateTitle();
-
-                _imGuiUiController.UpdateUi(snapshot, _timeProvider.RenderFrameDeltaTime);
-
-                Render();
                 
+                //RENDER
+                _imGuiUiManager.GenerateImGuiRenderCalls();
+                _vaultGuiGraphics.Render();
+                
+                //POST RENDER
                 UpdateWindowModeIfNeeded();
             }
         }
@@ -175,9 +178,9 @@ public class VaultGui : IGuiApplication
         }
     }
     
-    public void SetApplicationWindowMode(IGuiApplication.ApplicationWindowMode newWindowMode)
+    public void SetApplicationWindowState(WindowState windowState)
     {
-        _nextWindowModeToSet = newWindowMode;
+        _nextWindowModeToSet = windowState;
     }
     private void UpdateWindowModeIfNeeded()
     {
@@ -188,46 +191,27 @@ public class VaultGui : IGuiApplication
         
         unsafe
         {
-            switch(_nextWindowModeToSet)
+            if(_nextWindowModeToSet == WindowState.FullScreen)
             {
-                case IGuiApplication.ApplicationWindowMode.Normal:
-                    _window.WindowState = WindowState.Normal;
-                    break;
-                case IGuiApplication.ApplicationWindowMode.FullScreen:
-                    var currentMonitor = SDLExtensions.SDL_GetWindowDisplayIndex(_window);
+                //Need to perform extra logic of working out display mode to use
+                var currentMonitor = SDLExtensions.SDL_GetWindowDisplayIndex(_window);
                     
-                    var displayModeToUse = _fullScreenDisplayMode[currentMonitor];
+                var displayModeToUse = _fullScreenDisplayMode[currentMonitor];
                     
-                    if(SDLExtensions.SDL_SetWindowDisplayMode(_window, &displayModeToUse) != 0)
-                    {
-                        var errorString = SDLUtils.GetErrorStringIfSet();
-                        _logger.LogError("Unable To set Window Display Mode - Error: " + (errorString ?? "Unknown Error"));
-                    }
-                    
-                    _window.WindowState = WindowState.FullScreen;
-                    break;
-                case IGuiApplication.ApplicationWindowMode.Maximized:
-                    _window.WindowState = WindowState.Maximized;
-                    break;
-                case IGuiApplication.ApplicationWindowMode.Minimized:
-                    _window.WindowState = WindowState.Minimized;
-                    break;
-                case IGuiApplication.ApplicationWindowMode.BorderlessFullScreen:
-                    _window.WindowState = WindowState.BorderlessFullScreen;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(_nextWindowModeToSet), _nextWindowModeToSet, null);
+                if(SDLExtensions.SDL_SetWindowDisplayMode(_window, &displayModeToUse) != 0)
+                {
+                    var errorString = SDLUtils.GetErrorStringIfSet();
+                    _logger.LogError("Unable To set Window Display Mode - Error: " + (errorString ?? "Unknown Error"));
+                }
             }
+            
+            _window.WindowState = WindowState.Normal;
         }
         
         _nextWindowModeToSet = null;
     }
 
-    private void OnWindowOnResized()
-    {
-        _logger.Log($"Window Resized: {_window.Width}x{_window.Height}");
-        _graphicsDevice.MainSwapchain.Resize((uint)_window.Width, (uint)_window.Height);
-    }
+
 
     private void UpdateTitle()
     {
@@ -240,29 +224,14 @@ public class VaultGui : IGuiApplication
         _window.Title = $"Vault Gui - Render: {renderMs:0.00} ms/frame ({renderFps:0.0} FPS) | Update: {coreMs:0.00} ms/frame ({coreFps:0.0} FPS)";
     }
 
-    private void Render()
-    {
-        //Clear the backbuffer (TODO: any other rendering outside ui?)
-        _mainCommandList.Begin();
-        _mainCommandList.SetFramebuffer(_graphicsDevice.MainSwapchain.Framebuffer);
-        _mainCommandList.ClearColorTarget(0, new RgbaFloat(0.4f, 0.4f, 0.4f, 1f));
-        _mainCommandList.End();
-        _graphicsDevice.SubmitCommands(_mainCommandList);
-        
-        _imGuiUiController.RenderUi();
 
-        //And swap
-        _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
-    }
 
     private void ShutDown()
     {
         _logger.Log("Shutting Down");
         _vaultCoreManager.UnloadVaultCore();
-        _graphicsDevice.WaitForIdle();
-        _mainCommandList.Dispose();
-        _imGuiUiController.Dispose();
-        _graphicsDevice.Dispose();
+        _imGuiUiManager.Dispose();
+        _vaultGuiGraphics.Dispose();
         _logger.Log("Shut Down Finished");
     }
 }

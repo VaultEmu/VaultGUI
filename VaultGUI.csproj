@@ -10,6 +10,7 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <ApplicationIcon>Assets\VaultIcon.ico</ApplicationIcon>
         <IsPackable>false</IsPackable>
+        <LangVersion>10</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -25,12 +26,12 @@
 
     <ItemGroup>
       <PackageReference Include="McMaster.NETCore.Plugins" Version="1.4.0" />
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-      <PackageReference Include="NLog" Version="5.0.5" />
-      <PackageReference Include="StbImageSharp" Version="2.27.11" />
-      <PackageReference Include="VaultCore.CoreAPI" Version="0.1.5-alpha.0.4" />
-      <PackageReference Include="VaultCore.ImGuiWindowsAPI" Version="0.1.5-alpha.0.1" />
-      <PackageReference Include="VaultCore.Rendering" Version="0.1.5" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+      <PackageReference Include="NLog" Version="5.1.1" />
+      <PackageReference Include="StbImageSharp" Version="2.27.13" />
+      <PackageReference Include="VaultCore.CoreAPI" Version="0.1.5-alpha.0.14" />
+      <PackageReference Include="VaultCore.ImGuiWindowsAPI" Version="0.1.5-alpha.0.12" />
+      <PackageReference Include="VaultCore.Rendering" Version="0.1.6-alpha.0.8" />
       <PackageReference Include="Veldrid" Version="4.8.0" />
       <PackageReference Include="Veldrid.SPIRV" Version="1.0.15" />
       <PackageReference Include="Veldrid.StartupUtilities" Version="4.8.0" />

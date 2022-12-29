@@ -1,8 +1,8 @@
 using System.Numerics;
 using ImGuiNET;
-using VaultCore.CoreAPI;
 using VaultCore.ImGuiWindowsAPI;
 using VaultCore.Rendering;
+using Veldrid;
 
 namespace Vault;
 
@@ -10,13 +10,11 @@ public class GameScreen : IImGuiWindow
 {
     private const int SCREEN_PADDING = 16;
 
-    private readonly ITextureManager _textureManager;
-    private readonly IImGuiTextureManager _imguiTextureManager;
-    private readonly IImGuiWindowManager _imGuiWindowManager;
-    private readonly IGuiApplication _guiApplication;
-    private readonly  ILogger _logger;
+    private readonly TextureManager _textureManager;
+    private readonly ImGuiWindowManager _imGuiWindowManager;
+    private readonly VaultGui _guiApplication;
 
-    private bool _pixelPerfectScaling = false;
+    private bool _pixelPerfectScaling;
     private bool _autoScale = true;
     private float _currentScale = 1.0f;
     
@@ -44,14 +42,11 @@ public class GameScreen : IImGuiWindow
     }
     public ImGuiWindowFlags WindowFlags => ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.MenuBar;
 
-    public GameScreen()
+    public GameScreen(TextureManager textureManager, ImGuiWindowManager imGuiWindowManager, VaultGui guiApplication)
     {
-        _textureManager = GlobalFeatures.Resolver.GetFeature<ITextureManager>() ?? throw new InvalidOperationException("Unable to acquire ITextureManager Feature");
-        _imguiTextureManager = GlobalFeatures.Resolver.GetFeature<IImGuiTextureManager>() ?? throw new InvalidOperationException("Unable to acquire IImGuiTextureManager Feature");
-        _imGuiWindowManager = GlobalFeatures.Resolver.GetFeature<IImGuiWindowManager>() ?? throw new InvalidOperationException("Unable to acquire IImGuiWindowManager Feature");
-        _guiApplication = GlobalFeatures.Resolver.GetFeature<IGuiApplication>() ?? throw new InvalidOperationException("Unable to acquire IGuiApplication Feature");
-        _logger = GlobalFeatures.Resolver.GetFeature<ILogger>() ?? throw new InvalidOperationException("Unable to acquire ILogger Feature");
-        
+        _textureManager = textureManager;
+        _imGuiWindowManager = imGuiWindowManager;
+        _guiApplication = guiApplication;
         _testCardTexture = _textureManager.LoadTextureFromDisk(@".\Assets\TestCard.png", false);
     }
     
@@ -69,13 +64,13 @@ public class GameScreen : IImGuiWindow
             if(_imGuiWindowManager.GetFullscreenWindow() == this)
             {
                 _imGuiWindowManager.ClearFullscreenWindow();
-                _guiApplication.SetApplicationWindowMode(IGuiApplication.ApplicationWindowMode.Normal);
+                _guiApplication.SetApplicationWindowState(WindowState.Normal);
                         
             }
             else
             {
                 _imGuiWindowManager.SetWindowAsFullscreen(this);
-                _guiApplication.SetApplicationWindowMode(IGuiApplication.ApplicationWindowMode.BorderlessFullScreen);
+                _guiApplication.SetApplicationWindowState(WindowState.BorderlessFullScreen);
             }
         }
     }
@@ -146,7 +141,7 @@ public class GameScreen : IImGuiWindow
         var startY = contentRectMin.Y + ImGui.GetScrollY() + heightMargin * 0.5f;
 
         ImGui.SetCursorPos(new Vector2(startX, startY));
-        var imguiTextureRef = _imguiTextureManager.GetOrCreateImGuiTextureRefForTexture(textureToDraw);
+        var imguiTextureRef = _textureManager.GetOrCreateImGuiTextureRefForTexture(textureToDraw);
         
         ImGui.Image(imguiTextureRef.ImGuiRef, imageSize);
 

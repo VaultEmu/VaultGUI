@@ -8,20 +8,20 @@ using Veldrid;
 
 namespace Vault;
 
-public partial class TextureManager : ITextureManager, IImGuiTextureManager , IDisposable
+public partial class TextureManager : 
+    ITextureManager, 
+    IImGuiTextureManager, 
+    IDisposable
 {
     private readonly GraphicsDevice _parentGraphicsDevice;
-    private readonly ImGuiRenderer _parentImGuiRenderer;
+    private readonly ImGuiRenderer _imGuiRenderer;
     private readonly CommandList _copyTextureCommandList;
     
     public TextureManager(GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
     {
         _parentGraphicsDevice = graphicsDevice;
-        _parentImGuiRenderer = imGuiRenderer;
-        
+        _imGuiRenderer = imGuiRenderer;
         _copyTextureCommandList = _parentGraphicsDevice.ResourceFactory.CreateCommandList();
-
-        GlobalFeatures.RegisterFeature(this);
     }
 
     public Texture2D CreateTexture(uint width, uint height,
@@ -152,7 +152,7 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager , ID
             throw new InvalidOperationException("This Texture2D was not created buy this implementation");
         }
         
-        return new ImGuiTextureRef( _parentImGuiRenderer.GetOrCreateImGuiBinding(_parentGraphicsDevice.ResourceFactory, textureImpl.VeldridTexture));
+        return new ImGuiTextureRef( _imGuiRenderer.GetOrCreateImGuiBinding(_parentGraphicsDevice.ResourceFactory, textureImpl.VeldridTexture));
     }
 
     private unsafe void OnFinishWritingPixelsToTexture(Texture2DImpl texture2D)
@@ -303,7 +303,7 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager , ID
             destination.VeldridTexture, dstX, dstY, 0, dstMipLevel, 0,
             width, height, 1, 1);
         _copyTextureCommandList.End();
-        _parentGraphicsDevice.SubmitCommands(_copyTextureCommandList); ;
+        _parentGraphicsDevice.SubmitCommands(_copyTextureCommandList);
     }
     
     private unsafe void CreateTextureFromBytesViaStaging(byte[] pixelData, uint width, uint height, bool mipmaps, bool srgb, bool keepStagingTexture, 
@@ -598,5 +598,15 @@ public partial class TextureManager : ITextureManager, IImGuiTextureManager , ID
     public void Dispose()
     {
         _copyTextureCommandList.Dispose();
+    }
+
+    public void OnCoreAcquiresFeature(Type coreType, Type featureType, List<Type> allCoreFeaturesNeeded)
+    {
+        
+    }
+
+    public void OnCoreReleasesFeature(Type coreType, Type featureType, List<Type> allCoreFeaturesNeeded)
+    {
+        
     }
 }
