@@ -5,22 +5,12 @@ namespace Vault;
 
 public static class DpiAwareUtils
 {
-    private enum MonitorDpiType
-    {
-        MDT_EFFECTIVE_DPI = 0,
-        MDT_ANGULAR_DPI = 1,
-        MDT_RAW_DPI = 2,
-    }
+    private const int MDT_EFFECTIVE_DPI = 0;            //Maps to MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI in win32 api
+    private const int MONITOR_DEFAULT_TO_NEAREST = 2;   //Maps to MONITOR_DEFAULTTONEAREST in win32 api
     
-    private enum MonitorFromWindowFlags
-    {
-        MONITOR_DEFAULTTONULL = 0,
-        MONITOR_DEFAULTTOPRIMARY = 1, 
-        MONITOR_DEFAULTTONEAREST = 2,
-    }
 
     [DllImport("SHCore.dll", SetLastError = true)]
-    private static extern uint GetDpiForMonitor(IntPtr hmonitor, MonitorDpiType dpiType, out uint dpiX, out uint dpiY);
+    private static extern uint GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
     
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
@@ -31,9 +21,9 @@ public static class DpiAwareUtils
     public static float GetDPIScale(Sdl2Window window)
     {
         var nativeHandle = window.Handle;
-        var monitor = MonitorFromWindow(nativeHandle, (uint)MonitorFromWindowFlags.MONITOR_DEFAULTTONEAREST);
+        var monitor = MonitorFromWindow(nativeHandle, MONITOR_DEFAULT_TO_NEAREST);
         
-        GetDpiForMonitor(monitor, MonitorDpiType.MDT_EFFECTIVE_DPI, out var dpiX, out _);
+        GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, out var dpiX, out _);
         
         return dpiX / 96.0f;
     }
