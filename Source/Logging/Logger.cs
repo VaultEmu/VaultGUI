@@ -8,15 +8,22 @@ namespace Vault;
 public class Logger : VaultCore.Features.ILogging
 {
     private readonly NLog.Logger _loggerImpl;
-    private readonly StringBuilder _stackTraceStringBuilder = new StringBuilder();
+    
+    [ThreadStatic]
+    private static StringBuilder? _stackTraceStringBuilder;
+    
+    [ThreadStatic]
+    private static List<string>? _lineSplitCache;
+    
+    private static readonly string[] newLineCharToSplitOn = { "\r\n", "\r", "\n" };
+
     public Logger()
     {
         var config = new NLog.Config.LoggingConfiguration();
-        
-        var layout = "${time}:" +
-                     "${when:when=level!=LogLevel.Info:inner=[${level:uppercase=true:format=FirstCharacter}]} " +
-                     "${message:withexception=true:exceptionSeparator= - }" +
-                     "${event-properties:item=stacktrace}";
+
+        var layout = "${time}" +
+                     "[${level:uppercase=true:format=FirstCharacter}]" +
+                     ": ${message}";
 
         var logFile = new FileTarget("logfile")
         {
@@ -57,81 +64,80 @@ public class Logger : VaultCore.Features.ILogging
 
     public void Log(string message)
     {
-        _loggerImpl.Info(message);
+        LogMessageInternal(message, null, false, _loggerImpl.Info);
     }
     
     public void LogDebug(string message, Exception? exception = null)
     {
-        if(exception == null)
-        {
-            _loggerImpl.Debug(message);
-        }
-        else
-        {
-            _loggerImpl.Debug($"{message} - {exception.GetType().Name}: {exception.Message}");
-        }
+        LogMessageInternal(message, exception, false, _loggerImpl.Debug);
     }
     
     public void LogWarning(string message, Exception? exception = null)
     {
-        if(exception == null)
-        {
-            _loggerImpl.Warn(message);
-        }
-        else
-        {
-            _loggerImpl.Warn($"{message} - {exception.GetType().Name}: {exception.Message}");
-        }
+        LogMessageInternal(message, exception, false, _loggerImpl.Warn);
     }
     
     public void LogError(string message, Exception? exception = null)
     {
-        if(exception == null)
-        {
-            _loggerImpl.Error(message);
-        }
-        else
-        {
-            _loggerImpl.Error($"{message} - {exception.GetType().Name}: {exception.Message}");
-        }
+        LogMessageInternal(message, exception, false, _loggerImpl.Error);
     }
 
     public void LogFatal(string message, Exception? exception = null, bool showStackTrace = true)
     {
+        LogMessageInternal(message, exception, showStackTrace, _loggerImpl.Fatal);
+    }
+    
+    private void LogMessageInternal(string message, Exception? exception, bool showStackTrace, Action<string> logMethod)
+    {
+        if(_lineSplitCache == null)
+        {
+            _lineSplitCache = new List<string>();
+        }
+        
+        _lineSplitCache.Clear();
+        _lineSplitCache.AddRange(message.Split(newLineCharToSplitOn, StringSplitOptions.None));
+        
+        if(exception != null)
+        {
+            var exceptionMessageSplit = exception.Message.Split(newLineCharToSplitOn, StringSplitOptions.None);
+            
+            for(var index = 0; index < exceptionMessageSplit.Length; ++index)
+            {
+                if(index == 0)
+                {
+                    _lineSplitCache.Add($"   Exception - {exception.GetType().Name}: {exceptionMessageSplit[index]}");
+                }
+                else
+                {
+                    _lineSplitCache.Add($"      {exceptionMessageSplit[index]}");
+                }
+            }
+        }
+        
         if(showStackTrace)
         {
             var stackTrace = GetStackTrace(exception);
-        
-            if(exception == null)
-            {
-                _loggerImpl.WithProperty("stacktrace", stackTrace).Fatal(message);
-            }
-            else
-            {
-                _loggerImpl.WithProperty("stacktrace", stackTrace).Fatal($"{message} - {exception.GetType().Name}: {exception.Message}");
-            }
+            _lineSplitCache.AddRange(stackTrace.Split(newLineCharToSplitOn, StringSplitOptions.None));
         }
-        else
+        
+        foreach(var line in _lineSplitCache)
         {
-            if(exception == null)
-            {
-                _loggerImpl.Fatal(message);
-            }
-            else
-            {
-                _loggerImpl.Fatal(exception, message);
-            }
+            logMethod(line);
         }
-        
     }
+    
     
     private string GetStackTrace(Exception? exception)
     {
-        _stackTraceStringBuilder.Clear();
-        _stackTraceStringBuilder.AppendLine();
+        if(_stackTraceStringBuilder == null)
+        {
+            _stackTraceStringBuilder = new StringBuilder();
+        }
         
+        _stackTraceStringBuilder.Clear();
+
         //use the exception stacktrace, or generate our own (skipping the logging functions)
-        var stackTrace = exception != null ?  new StackTrace(exception, true) : new StackTrace(2, true);
+        var stackTrace = exception != null ?  new StackTrace(exception, true) : new StackTrace(3, true);
 
         var frames = stackTrace.GetFrames();
         for (var index = 0; index < frames.Length; index++)
@@ -148,8 +154,6 @@ public class Logger : VaultCore.Features.ILogging
             }
             else
             {
-                //var fullName = string.Format("{0}.{1}({2})", method.ReflectedType.FullName, method.Name,
-                //string.Join(",", method.GetParameters().Select(o => string.Format("{0} {1}", o.ParameterType, o.Name)).ToArray()));
                 _stackTraceStringBuilder
                     .Append(method.ReflectedType == null ? "?????" : method.ReflectedType.FullName)
                     .Append('.')
