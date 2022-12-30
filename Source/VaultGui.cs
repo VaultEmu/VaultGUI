@@ -22,7 +22,6 @@ public class VaultGui
         _logger = logger;
         try
         {
-            _logger.Log("Vault GUI - Multi System Emulator\n");
             _logger.Log("Initialising");
             
             var vsync = false;
@@ -50,7 +49,6 @@ public class VaultGui
             {
                 VeldridStartup.SetSDLGLContextAttributes(graphicDeviceOptions, preferredBackend);
             }
-
             var flags =
                 SDL_WindowFlags.OpenGL |
                 SDL_WindowFlags.Resizable |
@@ -95,7 +93,7 @@ public class VaultGui
             throw new ShutdownDueToFatalErrorException("Error During Initialisation");
         }
     }
-
+    
     private void SetupCoreFeatureResolver()
     {
         var featureResolver = _vaultCoreManager.FeatureResolver;
@@ -103,7 +101,7 @@ public class VaultGui
         featureResolver.RegisterFeatureImplementation(_logger); //ILogging
         featureResolver.RegisterFeatureImplementation(_timeProvider); //IHighResTimer
         featureResolver.RegisterFeatureImplementation(_vaultGuiGraphics.TextureManager); //ITextureManager, IImGuiTextureManager
-        featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiWindowManager); //IImGuiWidnowManager
+        featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiWindowManager); //IImGuiWindowManager
         featureResolver.RegisterFeatureImplementation(_vaultCoreSoftwareRendering); //ISoftwareRendering
     }
 
@@ -184,14 +182,16 @@ public class VaultGui
     }
     private void UpdateWindowModeIfNeeded()
     {
-        if(_nextWindowModeToSet == null)
+        if(_nextWindowModeToSet.HasValue == false)
         {
             return;
         }
         
+        _logger.Log("Changing Window Mode: " + _nextWindowModeToSet.Value);
+        
         unsafe
         {
-            if(_nextWindowModeToSet == WindowState.FullScreen)
+            if(_nextWindowModeToSet.Value == WindowState.FullScreen)
             {
                 //Need to perform extra logic of working out display mode to use
                 var currentMonitor = SDLExtensions.SDL_GetWindowDisplayIndex(_window);
@@ -205,7 +205,7 @@ public class VaultGui
                 }
             }
             
-            _window.WindowState = WindowState.Normal;
+            _window.WindowState = _nextWindowModeToSet.Value;
         }
         
         _nextWindowModeToSet = null;
@@ -223,9 +223,7 @@ public class VaultGui
         
         _window.Title = $"Vault Gui - Render: {renderMs:0.00} ms/frame ({renderFps:0.0} FPS) | Update: {coreMs:0.00} ms/frame ({coreFps:0.0} FPS)";
     }
-
-
-
+    
     private void ShutDown()
     {
         _logger.Log("Shutting Down");
