@@ -25,16 +25,8 @@ public class VaultGUIGraphics : IDisposable
         _logger = logger;
         _window = window;
 
-        var vsync = false;
-#if DEBUG
-        var debugGraphicsDevice = true;
-#else
-        var debugGraphicsDevice = false;
-#endif
-        
         _logger.Log("Init Graphics Systems");
-        _logger.Log($"Vsync: {vsync} | Debug Graphics Device {debugGraphicsDevice}");
-        
+
         _graphicsDevice = VeldridStartup.CreateGraphicsDevice(window, graphicDeviceOptions, graphicsBackend);
 
         if(_graphicsDevice == null)

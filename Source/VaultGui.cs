@@ -38,6 +38,7 @@ public class VaultGui
                 true,
                 true);
 
+            _logger.Log($"Vsync: {vsync} | Debug Graphics Device {debugGraphicsDevice}");
             
             var preferredBackend = VeldridStartup.GetPlatformDefaultBackend();
 
