@@ -157,13 +157,14 @@ public class VaultGui
                 }
 
                 //UPDATE
-                _vaultGuiGraphics.OnNewFrameStart();
+                _imGuiUiManager.Update(snapshot, _timeProvider.RenderFrameDeltaTime);
                 _timeProvider.OnFrameUpdate();
                 _vaultCoreManager.Update();
-                _imGuiUiManager.Update(snapshot, _timeProvider.RenderFrameDeltaTime);
+                
                 UpdateTitle();
                 
                 //RENDER
+                _vaultGuiGraphics.OnNewFrameStart();
                 _imGuiUiManager.GenerateImGuiRenderCalls();
                 _vaultGuiGraphics.Render();
                 
