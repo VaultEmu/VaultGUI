@@ -107,6 +107,25 @@ public class ImGuiUiManager : IDisposable
 
                 ImGui.EndMenu();
             }
+            
+            if(ImGui.BeginMenu("Windows"))
+            {
+                var consoleWindowOpen = _imGuiWindowManager.GetWindow<ConsoleWindow>();
+                
+                if(ImGui.MenuItem("Console", "", consoleWindowOpen != null))
+                {
+                    if(consoleWindowOpen == null)
+                    {
+                        consoleWindowOpen = new ConsoleWindow();
+                        _imGuiWindowManager.RegisterWindow(consoleWindowOpen);
+                    }
+                    else
+                    {
+                        _imGuiWindowManager.UnregisterWindow(consoleWindowOpen);
+                    }
+                }
+                ImGui.EndMenu();
+            }
 
             if(ImGui.BeginMenu("Help"))
             {
