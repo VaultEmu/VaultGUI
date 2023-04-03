@@ -7,11 +7,11 @@ namespace Vault;
 
 public class ConsoleWindow : IImGuiWindow
 {
-    public static readonly Vector4 DebugColor = new(0.6f, 0.9f, 0.9f, 1.0f);
-    public static readonly Vector4 InfoColor = new(0.95f, 0.95f, 0.95f, 1.0f);
-    public static readonly Vector4 WarningColor = new(1.0f, 0.85f, 0.45f, 1.0f);
-    public static readonly Vector4 ErrorColor = new(0.9f, 0.4f, 0.4f, 1.0f);
-    public static readonly Vector4 FatalColor = new(0.9f, 0.15f, 0.15f, 1.0f);
+    private static readonly Vector4 DebugColor = new(0.6f, 0.9f, 0.9f, 1.0f);
+    private static readonly Vector4 InfoColor = new(0.95f, 0.95f, 0.95f, 1.0f);
+    private static readonly Vector4 WarningColor = new(1.0f, 0.85f, 0.45f, 1.0f);
+    private static readonly Vector4 ErrorColor = new(0.9f, 0.4f, 0.4f, 1.0f);
+    private static readonly Vector4 FatalColor = new(0.9f, 0.15f, 0.15f, 1.0f);
 
     private bool _autoScroll = true;
     private ImGuiListClipperPtr _textClipper;
@@ -180,7 +180,7 @@ public class ConsoleWindow : IImGuiWindow
         
         string icon;
         Vector4 color;
-        bool? isVisible = false;
+        bool? isVisible;
         
         if(logLevel == LogLevel.Fatal)
         {
@@ -213,7 +213,7 @@ public class ConsoleWindow : IImGuiWindow
             isVisible = Logger.VaultGuiConsoleTarget?.InfoMessagesVisible;
         }
 
-        Vector4 buttonColor = Vector4.One;
+        Vector4 buttonColor;
         
         unsafe
         {
