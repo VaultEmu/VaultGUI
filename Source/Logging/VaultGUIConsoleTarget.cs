@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using NLog;
+﻿using NLog;
 using NLog.Targets;
 
 namespace Vault;
