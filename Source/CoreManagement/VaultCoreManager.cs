@@ -6,9 +6,10 @@ public class VaultCoreManager
     private readonly TimeProvider _timeProvider;
     private readonly Logger _logger;
     private readonly VaultCoreLoader _vaultCoreLoader;
-    private LoadedVaultCore? _currentlyLoadedCore;
     private ulong _prevHighResTimerSample;
     private double _updateAccum;
+    
+    public LoadedVaultCore? CurrentlyLoadedCore;
     
     public IReadOnlyList<VaultCoreData> AvailableCores => _vaultCoreLoader.AvailableCores; 
     
@@ -32,39 +33,39 @@ public class VaultCoreManager
     public void LoadVaultCore(VaultCoreData coreToLoad)
     {
         UnloadVaultCore();
-        _currentlyLoadedCore = _vaultCoreLoader.LoadVaultCore(coreToLoad);
+        CurrentlyLoadedCore = _vaultCoreLoader.LoadVaultCore(coreToLoad);
         
-        if(_currentlyLoadedCore != null)
+        if(CurrentlyLoadedCore != null)
         {
-            _currentlyLoadedCore.VaultCore.Initialise(FeatureResolver);
+            CurrentlyLoadedCore.VaultCore.Initialise(FeatureResolver);
         }
     }
 
     public void UnloadVaultCore()
     {
-        if(_currentlyLoadedCore == null)
+        if(CurrentlyLoadedCore == null)
         {
             return;
         }
         
-        _currentlyLoadedCore.VaultCore.ShutDown();
-        _vaultCoreLoader.UnloadVaultCore(_currentlyLoadedCore);
+        CurrentlyLoadedCore.VaultCore.ShutDown();
+        _vaultCoreLoader.UnloadVaultCore(CurrentlyLoadedCore);
     }
     
     public void Update()
     {
-        if(_currentlyLoadedCore == null)
+        if(CurrentlyLoadedCore == null)
         {
             return;
         }
         
-        var vaultCore = _currentlyLoadedCore.VaultCore;
+        var vaultCore = CurrentlyLoadedCore.VaultCore;
         
         var newTimeSample = _timeProvider.HighResolutionTimerSample;
         var frameTime =  (double)(newTimeSample - _prevHighResTimerSample) / _timeProvider.HighResolutionTimerSampleFrequency;
         _prevHighResTimerSample = newTimeSample;
         
-        if(vaultCore.UpdateRateMs <= 0.0f)
+        if(vaultCore.FixedUpdateRateMs <= 0.0f)
         {
             //Update ever Frame
             vaultCore.Update((float)frameTime);
@@ -74,13 +75,13 @@ public class VaultCoreManager
         {
             //Update with fixed timesteps
             _updateAccum += frameTime;
-            int numUpdatesAllowed = vaultCore.maxNumUpdates;
+            int numUpdatesAllowed = vaultCore.MaxNumFixedUpdatesInOneFrame;
             
-            while(_updateAccum >= vaultCore.UpdateRateMs)
+            while(_updateAccum >= vaultCore.FixedUpdateRateMs)
             {
-                vaultCore.Update(vaultCore.UpdateRateMs);
-                _timeProvider.OnCoreUpdate(vaultCore.UpdateRateMs);
-                _updateAccum -= vaultCore.UpdateRateMs;
+                vaultCore.Update(vaultCore.FixedUpdateRateMs);
+                _timeProvider.OnCoreUpdate(vaultCore.FixedUpdateRateMs);
+                _updateAccum -= vaultCore.FixedUpdateRateMs;
                 
                 if(numUpdatesAllowed > 0)
                 {
@@ -88,7 +89,7 @@ public class VaultCoreManager
                     
                     if(numUpdatesAllowed <= 0)
                     {
-                        _logger.LogWarning("Max Number of Updates per frame reached when trying to update Core. Breaking update loop");
+                        _logger.LogWarning("Max Number of Updates per frame reached when trying to run fixed update Core. Breaking update loop");
                         break;
                     }
                 }

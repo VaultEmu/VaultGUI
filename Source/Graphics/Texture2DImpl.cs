@@ -74,10 +74,11 @@ public partial class TextureManager
 
         public override void WritePixelData<T>(
             T[] pixelData,
-            uint pixelDataWidth, uint pixelDataHeight,
-            uint targetX, uint targetY,
+            uint pixelDataWidth, 
+            uint pixelDataHeight,
+            uint targetX, 
+            uint targetY,
             uint mipLevel = 0)
-            where T : struct
         {
             _parentManager.WritePixelData(this, pixelData, pixelDataWidth, pixelDataHeight, targetX, targetY, mipLevel);
         }

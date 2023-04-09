@@ -76,7 +76,7 @@ public class VaultGui
             _imGuiUiManager = new ImGuiUiManager(_vaultGuiGraphics.TextureManager, _window);
             _timeProvider = new TimeProvider();
             _vaultCoreManager = new VaultCoreManager(_timeProvider, _logger);
-            _vaultCoreSoftwareRendering = new VaultCoreSoftwareRendering(_vaultGuiGraphics.TextureManager, _imGuiUiManager, this);
+            _vaultCoreSoftwareRendering = new VaultCoreSoftwareRendering(_logger, _vaultGuiGraphics.TextureManager, _imGuiUiManager, this);
 
             SetupCoreFeatureResolver();
             
@@ -102,7 +102,7 @@ public class VaultGui
         featureResolver.RegisterFeatureImplementation(_logger); //ILogging
         featureResolver.RegisterFeatureImplementation(_timeProvider); //IHighResTimer
         featureResolver.RegisterFeatureImplementation(_vaultGuiGraphics.TextureManager); //ITextureManager, IImGuiTextureManager
-        featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiWindowManager); //IImGuiWindowManager
+        featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiWindowManager); //ImGuiWindowManager
         featureResolver.RegisterFeatureImplementation(_vaultCoreSoftwareRendering); //ISoftwareRendering
     }
 
@@ -212,8 +212,6 @@ public class VaultGui
         
         _nextWindowModeToSet = null;
     }
-
-
 
     private void UpdateTitle()
     {

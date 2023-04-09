@@ -5,7 +5,7 @@ using VaultCore.ImGuiWindowsAPI;
 
 namespace Vault;
 
-public class ConsoleWindow : IImGuiWindow
+public class ConsoleWindow : ImGuiWindow
 {
     private static readonly Vector4 DebugColor = new(0.6f, 0.9f, 0.9f, 1.0f);
     private static readonly Vector4 InfoColor = new(0.95f, 0.95f, 0.95f, 1.0f);
@@ -16,8 +16,12 @@ public class ConsoleWindow : IImGuiWindow
     private bool _autoScroll = true;
     private ImGuiListClipperPtr _textClipper;
 
-    public string WindowTitle => "Console";
-    public ImGuiWindowFlags WindowFlags => ImGuiWindowFlags.None;
+    public override string WindowTitle => "Console";
+
+    public override bool WindowOpenByDefault => false;
+
+    public override WindowMenuItem WindowsMenuItemData =>
+        new("Console", new ImGuiShortcut(ImGuiKey.C, ImGuiModFlags.Ctrl | ImGuiModFlags.Shift), 1000000);
 
     public ConsoleWindow()
     {
@@ -28,14 +32,12 @@ public class ConsoleWindow : IImGuiWindow
         }
     }
 
-    public void OnUpdate() { }
-
-    public void OnBeforeDrawImGuiWindow()
+    public override void OnBeforeDrawImGuiWindow()
     {
         ImGui.PushStyleVar(ImGuiStyleVar.WindowMinSize, new Vector2(575, 300));
     }
 
-    public void OnDrawImGuiWindowContent()
+    public override void OnDrawImGuiWindowContent()
     {
         DrawToolbar();
         DrawConsoleArea();
@@ -96,10 +98,10 @@ public class ConsoleWindow : IImGuiWindow
 
         if(consoleLoggerTarget != null)
         {
-            consoleLoggerTarget.GetMessageCount(out debugMessageCount, out infoMessageCount, 
+            consoleLoggerTarget.GetMessageCount(out debugMessageCount, out infoMessageCount,
                 out warningMessageCount, out errorMessageCount, out fatalMessageCount);
         }
-        
+
         DrawLogLevelToggleButton(LogLevel.Debug, debugMessageCount);
         ImGui.SameLine();
         DrawLogLevelToggleButton(LogLevel.Info, infoMessageCount);
@@ -109,7 +111,7 @@ public class ConsoleWindow : IImGuiWindow
         DrawLogLevelToggleButton(LogLevel.Error, errorMessageCount);
         ImGui.SameLine();
         DrawLogLevelToggleButton(LogLevel.Fatal, fatalMessageCount);
-        
+
         var windowWidth = ImGui.GetWindowWidth();
 
         if(windowWidth > 1040)
@@ -123,10 +125,11 @@ public class ConsoleWindow : IImGuiWindow
         {
             ClearConsole();
         }
+
         ImGui.SameLine();
         ImGui.Text($"{Fonts.FontAwesomeCodes.MagnifyingGlass}");
         ImGui.SameLine();
-        
+
         var newFilterText = "";
 
         if(consoleLoggerTarget?.FilterText != null)
@@ -154,21 +157,17 @@ public class ConsoleWindow : IImGuiWindow
         ImGui.Separator();
     }
 
-    public void OnAfterDrawImGuiWindow() { }
-
-    public void Dispose() { }
-
     private void ClearConsole()
     {
         Logger.VaultGuiConsoleTarget?.ClearConsole();
     }
-    
+
     private void DrawLogLevelToggleButton(LogLevel logLevel, int messageCount)
     {
         var toggleButtonWidth = new Vector2(100.0f, 0.0f);
-        
+
         string messageCountText;
-        
+
         if(messageCount > 999)
         {
             messageCountText = "999+";
@@ -177,11 +176,11 @@ public class ConsoleWindow : IImGuiWindow
         {
             messageCountText = messageCount.ToString();
         }
-        
+
         string icon;
         Vector4 color;
         bool? isVisible;
-        
+
         if(logLevel == LogLevel.Fatal)
         {
             icon = Fonts.FontAwesomeCodes.CircleXmark;
@@ -214,20 +213,20 @@ public class ConsoleWindow : IImGuiWindow
         }
 
         Vector4 buttonColor;
-        
+
         unsafe
         {
             var buttonColorPtr = ImGui.GetStyleColorVec4(ImGuiCol.Button);
-            buttonColor = (*buttonColorPtr);
+            buttonColor = *buttonColorPtr;
         }
-        
-        
+
+
         if(isVisible.HasValue == false || isVisible.Value == false)
         {
             color = new Vector4(color.X * 0.5f, color.Y * 0.5f, color.Z * 0.5f, color.W);
             buttonColor = new Vector4(buttonColor.X * 0.2f, buttonColor.Y * 0.2f, buttonColor.Z * 0.2f, color.W);
         }
-        
+
         ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(color));
         ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(buttonColor));
         if(ImGui.Button($"{icon} {messageCountText}", toggleButtonWidth)) //Debug
@@ -236,31 +235,30 @@ public class ConsoleWindow : IImGuiWindow
             {
                 if(logLevel == LogLevel.Fatal)
                 {
-                    Logger.VaultGuiConsoleTarget.FatalMessagesVisible = 
+                    Logger.VaultGuiConsoleTarget.FatalMessagesVisible =
                         !Logger.VaultGuiConsoleTarget.FatalMessagesVisible;
                 }
                 else if(logLevel == LogLevel.Error)
                 {
-                    Logger.VaultGuiConsoleTarget.ErrorMessagesVisible = 
-                        !Logger.VaultGuiConsoleTarget.ErrorMessagesVisible ;
+                    Logger.VaultGuiConsoleTarget.ErrorMessagesVisible =
+                        !Logger.VaultGuiConsoleTarget.ErrorMessagesVisible;
                 }
                 else if(logLevel == LogLevel.Warn)
                 {
-                    Logger.VaultGuiConsoleTarget.WarningMessagesVisible = 
+                    Logger.VaultGuiConsoleTarget.WarningMessagesVisible =
                         !Logger.VaultGuiConsoleTarget.WarningMessagesVisible;
                 }
                 else if(logLevel == LogLevel.Debug)
                 {
-                    Logger.VaultGuiConsoleTarget.DebugMessagesVisible = 
+                    Logger.VaultGuiConsoleTarget.DebugMessagesVisible =
                         !Logger.VaultGuiConsoleTarget.DebugMessagesVisible;
                 }
                 else
                 {
-                    Logger.VaultGuiConsoleTarget.InfoMessagesVisible = 
+                    Logger.VaultGuiConsoleTarget.InfoMessagesVisible =
                         !Logger.VaultGuiConsoleTarget.InfoMessagesVisible;
                 }
             }
-            
         }
 
         ImGui.PopStyleColor(2);

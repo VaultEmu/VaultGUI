@@ -207,7 +207,7 @@ public partial class TextureManager :
         uint pixelDataWidth, uint pixelDataHeight,
         uint targetX, uint targetY,
         uint mipLevel = 0)
-        where T : struct
+        where T : unmanaged
     {
         if(texture2D.IsWritingPixelsToTexture == false)
         {

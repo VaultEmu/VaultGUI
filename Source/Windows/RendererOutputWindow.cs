@@ -6,56 +6,67 @@ using Veldrid;
 
 namespace Vault;
 
-public class GameScreen : IImGuiWindow
+public class RendererOutputWindow : ImGuiWindow
 {
     private const int SCREEN_PADDING = 16;
 
     private readonly TextureManager _textureManager;
     private readonly ImGuiWindowManager _imGuiWindowManager;
     private readonly VaultGui _guiApplication;
+    private readonly string _windowTitle;
 
     private bool _pixelPerfectScaling;
     private bool _autoScale = true;
     private float _currentScale = 1.0f;
-    
+
     private Texture2D? _textureToShowOnScreen;
     private readonly Texture2D _testCardTexture;
 
     private bool _switchFullScreenMode;
-    
+
     private Texture2D _textureToDraw => _textureToShowOnScreen ?? _testCardTexture;
-    
+
     private bool _isShowingTestCard => _textureToDraw == _testCardTexture;
-    
-    public string CustomWindowID => "Screen";
-    public string WindowTitle
+
+
+    public override string WindowTitle
     {
         get
         {
             if(_isShowingTestCard)
             {
-                return "Screen";
+                return _windowTitle;
             }
-        
-            return $"Screen ({_textureToDraw.Width}x{_textureToDraw.Height}) - {_currentScale * 100.0f:0}%";
+
+            //Show resolution and scale in title
+            return $"{_windowTitle} ({_textureToDraw.Width}x{_textureToDraw.Height}) - {_currentScale * 100.0f:0}%";
         }
     }
-    public ImGuiWindowFlags WindowFlags => ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.MenuBar;
 
-    public GameScreen(TextureManager textureManager, ImGuiWindowManager imGuiWindowManager, VaultGui guiApplication)
+    //CB: override to send raw window title as WindowTitle is dynamic
+    public override string WindowID => _windowTitle;
+
+    public override ImGuiWindowFlags WindowFlags => ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.MenuBar;
+
+    public override bool WindowAlwaysOpen => true;
+
+    public override WindowMenuItem? WindowsMenuItemData => null;
+
+    public RendererOutputWindow(string windowName, TextureManager textureManager, ImGuiWindowManager imGuiWindowManager, VaultGui guiApplication)
     {
         _textureManager = textureManager;
         _imGuiWindowManager = imGuiWindowManager;
         _guiApplication = guiApplication;
+        _windowTitle = windowName;
         _testCardTexture = _textureManager.LoadTextureFromDisk(@".\Assets\TestCard.png", false);
     }
-    
-    public void SetTextureToShowOnScreen(Texture2D texture)
+
+    public void SetTextureToShowOnScreen(Texture2D? texture)
     {
         _textureToShowOnScreen = texture;
     }
 
-    public void OnUpdate()
+    public override void OnUpdate()
     {
         //CB: Switch to full screen mode outside draw loop otherwise we get crashes
         if(_switchFullScreenMode)
@@ -65,7 +76,6 @@ public class GameScreen : IImGuiWindow
             {
                 _imGuiWindowManager.ClearFullscreenWindow();
                 _guiApplication.SetApplicationWindowState(WindowState.Normal);
-                        
             }
             else
             {
@@ -74,39 +84,45 @@ public class GameScreen : IImGuiWindow
             }
         }
     }
-    
-    public void OnBeforeDrawImGuiWindow()
+
+    public override void OnBeforeDrawImGuiWindow()
     {
         ImGui.PushStyleVar(ImGuiStyleVar.WindowMinSize, new Vector2(350, 350));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
         ImGui.PushStyleColor(ImGuiCol.WindowBg, ImGui.GetColorU32(new Vector4(0.2f, 0.2f, 0.2f, 1.0f)));
     }
-    
-    public void OnDrawImGuiWindowContent()
+
+    public override void OnDrawImGuiWindowContent()
     {
         var contentRectMin = ImGui.GetWindowContentRegionMin();
         var contentRectMax = ImGui.GetWindowContentRegionMax();
-        
+
         CheckForFullScreenDoubleClick(contentRectMin, contentRectMax);
-        
+
         DrawScreenTexture(contentRectMax, contentRectMin, _textureToDraw);
 
         //CB: Pop for Style vars done in OnBeforeDrawImGuiWindow here - We need them popped before we do the menu
         ImGui.PopStyleVar(3);
- 
+
         DrawWindowMenuBar();
+    }
+
+
+    public override void OnAfterDrawImGuiWindow()
+    {
+        ImGui.PopStyleColor();
     }
 
     private void DrawScreenTexture(Vector2 contentRectMax, Vector2 contentRectMin, Texture2D textureToDraw)
     {
         var width = contentRectMax.X - contentRectMin.X;
         var height = contentRectMax.Y - contentRectMin.Y;
-        
+
         var isFullscreen = _imGuiWindowManager.GetFullscreenWindow() == this;
-        
+
         var padding = SCREEN_PADDING;
-        
+
         if(isFullscreen)
         {
             padding = 0;
@@ -124,7 +140,7 @@ public class GameScreen : IImGuiWindow
         {
             _currentScale = RoundZoomToNearestPixelPerfectSize(_currentScale);
         }
-        
+
         if(_isShowingTestCard)
         {
             //Clamp Testcard to max size4
@@ -142,7 +158,7 @@ public class GameScreen : IImGuiWindow
 
         ImGui.SetCursorPos(new Vector2(startX, startY));
         var imguiTextureRef = _textureManager.GetOrCreateImGuiTextureRefForTexture(textureToDraw);
-        
+
         ImGui.Image(imguiTextureRef.ImGuiRef, imageSize);
 
         //Add dummy for right/bottom padding so scroll bars appear at correct point
@@ -231,19 +247,9 @@ public class GameScreen : IImGuiWindow
                     _currentScale = MathF.Min(4.0f, _currentScale);
                 }
             }
-            
+
             ImGui.EndMenuBar();
         }
-    }
-
-    public void OnAfterDrawImGuiWindow()
-    {
-        ImGui.PopStyleColor();
-    }
-
-    public void Dispose()
-    {
-        //Nothing to do
     }
 
     private float RoundZoomToNearestPixelPerfectSize(float currentScale)

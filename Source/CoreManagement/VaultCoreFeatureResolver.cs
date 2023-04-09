@@ -46,10 +46,10 @@ public class VaultCoreFeatureResolver : IVaultCoreFeatureResolver
     
     private void AddConcreteTypeMappingForFeature(Type type, IVaultCoreFeature feature)
     {
-        if(_featureLookup.ContainsKey(type))
+        if(_featureLookup.TryGetValue(type, out var value))
         {
             throw new InvalidOperationException($"Type {type} already has concrete type mapped to it - " +
-                                                $"Existing Concrete Type ({_featureLookup[type].GetType()})");
+                                                $"Existing Concrete Type ({value.GetType()})");
         }
             
         _featureLookup.Add(type, feature);

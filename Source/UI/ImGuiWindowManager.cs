@@ -1,63 +1,92 @@
+using System.Numerics;
 using ImGuiNET;
 using VaultCore.ImGuiWindowsAPI;
 
 namespace Vault;
 
-public class ImGuiWindowManager : IImGuiWindowManager, IDisposable
+public class ImGuiWindowManager : IImGuiWindowManager
 {
-    private readonly List<IImGuiWindow> _subWindows = new();
-    private IImGuiWindow? _fullscreenWindow;
+    private class WindowData
+    {
+        public readonly ImGuiWindow WindowInstance;
+        public bool WindowOpen;
+
+        public WindowData(ImGuiWindow windowInstance)
+        {
+            WindowInstance = windowInstance;
+
+            //CB TODO: Check settings for current open state
+            WindowOpen = windowInstance.WindowOpenByDefault;
+        }
+    }
+
+    private class WindowMenuSection
+    {
+        public readonly string SectionName;
+        public readonly List<WindowMenuSection> SubWindowsSections = new();
+        public ImGuiWindow? WindowToOpen;
+        public ImGuiShortcut? WindowOpenShortcut;
+        public int Priority;
+
+        public WindowMenuSection(string sectionName)
+        {
+            SectionName = sectionName;
+        }
+    }
+
+    private readonly List<WindowData> _subWindowData = new();
+    private WindowData? _fullscreenWindow;
 
     public bool IsAnyWindowFullScreen => _fullscreenWindow != null;
 
-    public IImGuiWindow? GetFullscreenWindow()
+    public ImGuiWindow? GetFullscreenWindow()
     {
-        return _fullscreenWindow;
+        return _fullscreenWindow?.WindowInstance;
     }
 
-    public void RegisterWindow(IImGuiWindow window)
+    public void RegisterWindow(ImGuiWindow window)
     {
-        if(_subWindows.Contains(window))
+        if(_subWindowData.FindIndex(x => x.WindowInstance == window) >= 0)
         {
             throw new InvalidOperationException("Trying to register window that is already registered");
         }
 
-        _subWindows.Add(window);
+        _subWindowData.Add(new WindowData(window));
     }
 
-    public void UnregisterWindow(IImGuiWindow window)
+    public void UnregisterWindow(ImGuiWindow window)
     {
-        if(_subWindows.Contains(window) == false)
+        if(_subWindowData.FindIndex(x => x.WindowInstance == window) < 0)
         {
             throw new InvalidOperationException("Trying to unregister window that is not registered");
         }
 
-        _subWindows.Remove(window);
+        _subWindowData.RemoveAll(x => x.WindowInstance == window);
     }
 
-    public void SetWindowAsFullscreen(IImGuiWindow window)
+    public void SetWindowOpen(ImGuiWindow window, bool open)
     {
-        if(_subWindows.Contains(window) == false)
+        var windowData = _subWindowData.FirstOrDefault(x => x.WindowInstance == window);
+
+        if(windowData == null)
         {
             throw new InvalidOperationException("Trying to set window as fullscreen that is not registered");
         }
 
-        _fullscreenWindow = window;
+        windowData.WindowOpen = open;
     }
 
-    public T? GetWindow<T>() where T : IImGuiWindow
+    public void SetWindowAsFullscreen(ImGuiWindow window)
     {
-        foreach (var window in _subWindows)
+        var windowData = _subWindowData.FirstOrDefault(x => x.WindowInstance == window);
+
+        if(windowData == null)
         {
-            if(window is T)
-            {
-                return (T)window;
-            }
+            throw new InvalidOperationException("Trying to set window as fullscreen that is not registered");
         }
 
-        return default;
+        _fullscreenWindow = windowData;
     }
-
 
     public void ClearFullscreenWindow()
     {
@@ -66,33 +95,59 @@ public class ImGuiWindowManager : IImGuiWindowManager, IDisposable
 
     public void UpdateWindows()
     {
-        foreach (var window in _subWindows)
+        foreach (var windowData in _subWindowData)
         {
-            window.OnUpdate();
+            windowData.WindowInstance.OnUpdate();
+            
+            var menuData = windowData.WindowInstance.WindowsMenuItemData;
+            
+            if(menuData != null && menuData.Shortcut != null)
+            {
+                if(menuData.Shortcut.IsShortcutPressed())
+                {
+                    var windowOpen = _subWindowData.Find(x => x.WindowInstance == windowData.WindowInstance)!.WindowOpen;
+                    SetWindowOpen(windowData.WindowInstance, !windowOpen);
+                }
+            }
+        }
+
+        //Should the full screen window become closed, exit full screen view
+        if(_fullscreenWindow != null && _fullscreenWindow.WindowOpen == false)
+        {
+            ClearFullscreenWindow();
         }
     }
 
     public void DrawWindows()
     {
-        foreach (var window in _subWindows)
+        //ImGui.ShowDemoWindow();
+
+        foreach (var windowData in _subWindowData)
         {
-            if(IsAnyWindowFullScreen && _fullscreenWindow != window)
+            if(IsAnyWindowFullScreen && _fullscreenWindow != windowData)
             {
                 continue;
             }
 
-            var windowName = window.WindowTitle;
-            var windowID = window.CustomWindowID;
-            var windowFlags = window.WindowFlags;
+            if(windowData.WindowOpen == false)
+            {
+                continue;
+            }
+
+            var windowName = windowData.WindowInstance.WindowTitle;
+            var windowID = windowData.WindowInstance.WindowID;
+            var windowFlags = windowData.WindowInstance.WindowFlags;
 
             var fullWindowString = $"{windowName}###{windowID}";
 
+            var viewport = ImGui.GetMainViewport();
+
             if(IsAnyWindowFullScreen)
             {
-                var viewport = ImGui.GetMainViewport();
                 ImGui.SetNextWindowPos(viewport.WorkPos);
                 ImGui.SetNextWindowSize(viewport.WorkSize);
                 ImGui.SetNextWindowViewport(viewport.ID);
+
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0.0f);
                 ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0.0f);
 
@@ -101,14 +156,31 @@ public class ImGuiWindowManager : IImGuiWindowManager, IDisposable
                 fullWindowString += "_FullScreen";
             }
 
-            window.OnBeforeDrawImGuiWindow();
 
-            if(ImGui.Begin(fullWindowString, windowFlags))
+            ImGui.SetNextWindowPos(new Vector2(viewport.WorkSize.X * 0.5f - 300.0f, viewport.WorkSize.Y * 0.5f - 200.0f), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSize(new Vector2(600, 400), ImGuiCond.FirstUseEver);
+
+            windowData.WindowInstance.OnBeforeDrawImGuiWindow();
+
+            bool windowNotCollapsed;
+
+            if(windowData.WindowInstance.WindowAlwaysOpen)
             {
-                window.OnDrawImGuiWindowContent();
+                windowNotCollapsed = ImGui.Begin(fullWindowString, windowFlags);
+            }
+            else
+            {
+                windowNotCollapsed = ImGui.Begin(fullWindowString, ref windowData.WindowOpen, windowFlags);
             }
 
-            window.OnAfterDrawImGuiWindow();
+            if(windowNotCollapsed)
+            {
+                windowData.WindowInstance.OnDrawImGuiWindowContent();
+            }
+
+            ImGui.End();
+
+            windowData.WindowInstance.OnAfterDrawImGuiWindow();
 
             if(IsAnyWindowFullScreen)
             {
@@ -117,11 +189,106 @@ public class ImGuiWindowManager : IImGuiWindowManager, IDisposable
         }
     }
 
-    public void Dispose()
+    public void PopulateWindowMenu()
     {
-        foreach (var window in _subWindows)
+        var topLevelMenuSection = new List<WindowMenuSection>();
+
+        //Build our data structure for the window menu
+        foreach (var windowData in _subWindowData)
         {
-            window.Dispose();
+            var menuData = windowData.WindowInstance.WindowsMenuItemData;
+
+            if(menuData == null)
+            {
+                continue;
+            }
+
+            var split = menuData.MenuPath.Split("/");
+
+            var currentLevel = topLevelMenuSection;
+
+            for (var index = 0; index < split.Length; index++)
+            {
+                var section = split[index];
+                var currentItem = currentLevel.Find(x => x.SectionName.Equals(section));
+
+                if(currentItem == null)
+                {
+                    currentItem = new WindowMenuSection(section);
+                    currentItem.Priority = int.MinValue;
+                    currentLevel.Add(currentItem);
+                }
+
+                if(currentItem.Priority < menuData.Priority)
+                {
+                    currentItem.Priority = menuData.Priority;
+                }
+
+                //Sort items as we go
+                currentLevel.Sort((x, y) =>
+                {
+                    var result = x.Priority.CompareTo(y.Priority);
+
+                    if(result == 0)
+                    {
+                        result = string.Compare(x.SectionName, y.SectionName, StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    return result;
+                });
+
+                if(index == split.Length - 1)
+                {
+                    //Last part of path, this is our section to click on
+                    currentItem.WindowToOpen = windowData.WindowInstance;
+                    currentItem.WindowOpenShortcut = menuData.Shortcut;
+                }
+                else
+                {
+                    //Going down one level
+                    currentLevel = currentItem.SubWindowsSections;
+                }
+            }
+        }
+
+        RecursiveDrawMenuItems(topLevelMenuSection, 0);
+    }
+
+    private void RecursiveDrawMenuItems(List<WindowMenuSection> levelToDraw, int lastPriority)
+    {
+        foreach (var item in levelToDraw)
+        {
+            if(item.Priority - lastPriority > 100)
+            {
+                ImGui.Separator();
+            }
+
+            lastPriority = item.Priority;
+
+            if(item.WindowToOpen == null)
+            {
+                //Has sublevel
+                if(ImGui.BeginMenu(item.SectionName))
+                {
+                    RecursiveDrawMenuItems(item.SubWindowsSections, lastPriority);
+                    ImGui.EndMenu();
+                }
+            }
+            else
+            {
+                //is leaf
+                var shortcutText = "";
+                if(item.WindowOpenShortcut != null)
+                {
+                    shortcutText = item.WindowOpenShortcut.ToString();
+                }
+                
+                var windowOpen = _subWindowData.Find(x => x.WindowInstance == item.WindowToOpen)!.WindowOpen;
+                if(ImGui.MenuItem(item.SectionName, shortcutText, windowOpen))
+                {
+                    SetWindowOpen(item.WindowToOpen, !windowOpen);
+                }
+            }
         }
     }
 

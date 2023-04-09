@@ -1,44 +1,44 @@
 using System.Numerics;
 using ImGuiNET;
+using VaultCore.ImGuiWindowsAPI;
+using VaultCore.Rendering;
 using Veldrid;
 using Veldrid.Sdl2;
-using VaultCore.Rendering;
-using VaultCore.ImGuiWindowsAPI;
 
 namespace Vault;
-
 
 public class ImGuiUiManager : IDisposable
 {
     private readonly Sdl2Window _parentWindow;
-    private readonly ImGuiWindowManager _imGuiWindowManager;
     private readonly ImGuiInput _ImGuiInput;
-    
+
     private readonly TextureManager _textureManager;
     private readonly Texture2D _backgroundTexture;
     private readonly ImGuiTextureRef _backgroundTextureImGuiRef;
-    
-    public ImGuiWindowManager ImGuiWindowManager => _imGuiWindowManager;
+
+    private readonly List<ImGuiWindow> _defaultWindows = new();
+
+    public ImGuiWindowManager ImGuiWindowManager { get; }
 
     public ImGuiUiManager(TextureManager textureManager, Sdl2Window window)
     {
         _textureManager = textureManager;
         _parentWindow = window;
-        _imGuiWindowManager = new ImGuiWindowManager();
+        ImGuiWindowManager = new ImGuiWindowManager();
         _ImGuiInput = new ImGuiInput();
 
         ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        
+
         _backgroundTexture = _textureManager.LoadTextureFromDisk(@".\Assets\VaultBg.png");
         _backgroundTextureImGuiRef = _textureManager.GetOrCreateImGuiTextureRefForTexture(_backgroundTexture);
 
         AddDefaultWindows();
     }
-    
+
     public void Update(InputSnapshot snapshot, double deltaSeconds)
     {
         _ImGuiInput.Update(snapshot, deltaSeconds);
-        _imGuiWindowManager.UpdateWindows();
+        ImGuiWindowManager.UpdateWindows();
     }
 
     public void GenerateImGuiRenderCalls()
@@ -49,8 +49,8 @@ public class ImGuiUiManager : IDisposable
         ImGui.DockSpaceOverViewport(ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
 
         DrawMenuBar();
-        
-        _imGuiWindowManager.DrawWindows();
+
+        ImGuiWindowManager.DrawWindows();
     }
 
     private void DrawBackgroundImage()
@@ -60,10 +60,10 @@ public class ImGuiUiManager : IDisposable
 
         var halfDisplaySize = ImGui.GetMainViewport().WorkSize * 0.5f;
 
-        ImGui.GetBackgroundDrawList().AddImage(_backgroundTextureImGuiRef.ImGuiRef, 
+        ImGui.GetBackgroundDrawList().AddImage(_backgroundTextureImGuiRef.ImGuiRef,
             new Vector2(
                 halfDisplaySize.X - imageWidth * 0.5f,
-                halfDisplaySize.Y - imageHeight * 0.5f), 
+                halfDisplaySize.Y - imageHeight * 0.5f),
             new Vector2(
                 halfDisplaySize.X + imageWidth * 0.5f,
                 halfDisplaySize.Y + imageHeight * 0.5f),
@@ -72,12 +72,21 @@ public class ImGuiUiManager : IDisposable
 
     private void AddDefaultWindows()
     {
-       
+        _defaultWindows.Add(new ConsoleWindow());
+
+        foreach (var window in _defaultWindows)
+        {
+            ImGuiWindowManager.RegisterWindow(window);
+        }
     }
 
     public void Dispose()
     {
-        _imGuiWindowManager.Dispose();
+        foreach (var window in _defaultWindows)
+        {
+            ImGuiWindowManager.UnregisterWindow(window);
+            window.Dispose();
+        }
     }
 
     private void DrawMenuBar()
@@ -88,16 +97,13 @@ public class ImGuiUiManager : IDisposable
         {
             return;
         }
-        
-        bool openAboutPopup = false;
+
+        var openAboutPopup = false;
         if(ImGui.BeginMainMenuBar())
         {
             if(ImGui.BeginMenu("File"))
             {
-                if(ImGui.MenuItem("Load Core", "CTRL+O"))
-                {
-                    
-                }
+                if(ImGui.MenuItem("Load Core", "CTRL+O")) { }
 
                 ImGui.Separator();
                 if(ImGui.MenuItem("Exit", "Alt-F4"))
@@ -107,23 +113,10 @@ public class ImGuiUiManager : IDisposable
 
                 ImGui.EndMenu();
             }
-            
+
             if(ImGui.BeginMenu("Windows"))
             {
-                var consoleWindowOpen = _imGuiWindowManager.GetWindow<ConsoleWindow>();
-                
-                if(ImGui.MenuItem("Console", "", consoleWindowOpen != null))
-                {
-                    if(consoleWindowOpen == null)
-                    {
-                        consoleWindowOpen = new ConsoleWindow();
-                        _imGuiWindowManager.RegisterWindow(consoleWindowOpen);
-                    }
-                    else
-                    {
-                        _imGuiWindowManager.UnregisterWindow(consoleWindowOpen);
-                    }
-                }
+                ImGuiWindowManager.PopulateWindowMenu();
                 ImGui.EndMenu();
             }
 
