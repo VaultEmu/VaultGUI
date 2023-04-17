@@ -1,4 +1,6 @@
-﻿using VaultCore.Rendering;
+﻿using System.Numerics;
+using Vault.Input.Mouse;
+using VaultCore.Rendering;
 
 namespace Vault;
 
@@ -23,7 +25,7 @@ public class VaultCoreSoftwareRendering : ISoftwareRendering
     private readonly ImGuiUiManager _imGuiManager;
     private readonly Logger _logger;
 
-    private readonly Dictionary<SoftwareRenderingOutputHandle, RenderOutputData> _outputs = new();
+    private readonly Dictionary<RenderOutputHandle, RenderOutputData> _outputs = new();
 
     public VaultCoreSoftwareRendering(Logger logger, TextureManager textureManager, ImGuiUiManager imGuiManager, VaultGui parentGuiApplication)
     {
@@ -52,9 +54,9 @@ public class VaultCoreSoftwareRendering : ISoftwareRendering
         }
     }
 
-    public SoftwareRenderingOutputHandle CreateOutput(string outputName)
+    public RenderOutputHandle CreateOutput(string outputName)
     {
-        var newHandle = SoftwareRenderingOutputHandle.Create();
+        var newHandle = RenderOutputHandle.Create();
 
         var newOutputWindow = new RendererOutputWindow(outputName, _textureManager,
             _imGuiManager.ImGuiWindowManager, _parentGuiApplication);
@@ -66,9 +68,9 @@ public class VaultCoreSoftwareRendering : ISoftwareRendering
         return newHandle;
     }
 
-    public void DestroyOutput(SoftwareRenderingOutputHandle handle)
+    public void DestroyOutput(RenderOutputHandle handle)
     {
-        if(handle == SoftwareRenderingOutputHandle.InvalidHandle)
+        if(handle == RenderOutputHandle.InvalidHandle)
         {
             throw new InvalidOperationException("Trying to use invalid handle");
         }
@@ -90,9 +92,9 @@ public class VaultCoreSoftwareRendering : ISoftwareRendering
         _outputs.Remove(handle);
     }
 
-    public void ResetOutput(SoftwareRenderingOutputHandle handle)
+    public void ResetOutput(RenderOutputHandle handle)
     {
-        if(handle == SoftwareRenderingOutputHandle.InvalidHandle)
+        if(handle == RenderOutputHandle.InvalidHandle)
         {
             throw new InvalidOperationException("Trying to use invalid handle");
         }
@@ -110,9 +112,45 @@ public class VaultCoreSoftwareRendering : ISoftwareRendering
 
         output.OutputWindow.SetTextureToShowOnScreen(null);
     }
-    
-    public void OnFrameReadyToDisplayOnOutput(SoftwareRenderingOutputHandle target, PixelData pixelData)
+
+    public Vector2 GetOutputSize(RenderOutputHandle handle)
     {
+        if(handle == RenderOutputHandle.InvalidHandle)
+        {
+            throw new InvalidOperationException("Trying to use invalid handle");
+        }
+        
+        if(_outputs.TryGetValue(handle, out var output) == false)
+        {
+            throw new InvalidOperationException("Trying to use output that does not exist");
+        }
+        
+        return Vector2.Zero;
+    }
+
+    public bool GetMouseAbsolutePosition(RenderOutputHandle handle, IMouseDevice mouseDevice, out Vector2 mousePosOut)
+    {
+        if(handle == RenderOutputHandle.InvalidHandle)
+        {
+            throw new InvalidOperationException("Trying to use invalid handle");
+        }
+        
+        if(_outputs.TryGetValue(handle, out var output) == false)
+        {
+            throw new InvalidOperationException("Trying to use output that does not exist");
+        }
+        
+        mousePosOut = Vector2.Zero;
+        return false;
+    }
+
+    public void OnFrameReadyToDisplayOnOutput(RenderOutputHandle target, PixelData pixelData)
+    {
+        if(target == RenderOutputHandle.InvalidHandle)
+        {
+            throw new InvalidOperationException("Trying to use invalid handle");
+        }
+        
         if(_outputs.TryGetValue(target, out var output) == false)
         {
             throw new InvalidOperationException("Trying to use output that does not exist");

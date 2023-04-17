@@ -73,7 +73,7 @@ public class VaultGui
             
             //Create Main Components
             _vaultGuiGraphics = new VaultGUIGraphics(_logger, _window, graphicDeviceOptions, preferredBackend);
-            _imGuiUiManager = new ImGuiUiManager(_vaultGuiGraphics.TextureManager, _window);
+            _imGuiUiManager = new ImGuiUiManager(_vaultGuiGraphics.TextureManager, _window, _logger);
             _timeProvider = new TimeProvider();
             _vaultCoreManager = new VaultCoreManager(_timeProvider, _logger);
             _vaultCoreSoftwareRendering = new VaultCoreSoftwareRendering(_logger, _vaultGuiGraphics.TextureManager, _imGuiUiManager, this);
@@ -102,7 +102,8 @@ public class VaultGui
         featureResolver.RegisterFeatureImplementation(_logger); //ILogging
         featureResolver.RegisterFeatureImplementation(_timeProvider); //IHighResTimer
         featureResolver.RegisterFeatureImplementation(_vaultGuiGraphics.TextureManager); //ITextureManager, IImGuiTextureManager
-        featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiWindowManager); //ImGuiWindowManager
+        featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiWindowManager); //IImGuiWindowManager
+        featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiMenuManager); //IImGuiMenuManager
         featureResolver.RegisterFeatureImplementation(_vaultCoreSoftwareRendering); //ISoftwareRendering
     }
 
@@ -158,12 +159,12 @@ public class VaultGui
 
                 //UPDATE
                 _imGuiUiManager.Update(snapshot, _timeProvider.RenderFrameDeltaTime);
-                _timeProvider.OnFrameUpdate();
                 _vaultCoreManager.Update();
                 
                 UpdateTitle();
                 
                 //RENDER
+                _timeProvider.OnFrameUpdate();
                 _vaultGuiGraphics.OnNewFrameStart();
                 _imGuiUiManager.GenerateImGuiRenderCalls();
                 _vaultGuiGraphics.Render();

@@ -15,21 +15,28 @@ public class ConsoleWindow : ImGuiWindow
 
     private bool _autoScroll = true;
     private ImGuiListClipperPtr _textClipper;
+    private ImGuiMenuItem _menuItem;
+    
+    private ImGuiMenuManager _imGuiMenuManager;
 
     public override string WindowTitle => "Console";
+    
+    public override bool IsWindowOpen { get; set; } = false;
 
-    public override bool WindowOpenByDefault => false;
-
-    public override WindowMenuItem WindowsMenuItemData =>
-        new("Console", new ImGuiShortcut(ImGuiKey.C, ImGuiModFlags.Ctrl | ImGuiModFlags.Shift), 1000000);
-
-    public ConsoleWindow()
+    public ConsoleWindow(ImGuiMenuManager imGuiMenuManager)
     {
+        _imGuiMenuManager = imGuiMenuManager;
+        
         unsafe
         {
             var textClipperPtr = ImGuiNative.ImGuiListClipper_ImGuiListClipper();
             _textClipper = new ImGuiListClipperPtr(textClipperPtr);
         }
+        
+        _menuItem = new ImGuiMenuItem("Windows/Console", () => {}, 
+            new ImGuiShortcut(ImGuiKey.C, ImGuiModFlags.Ctrl | ImGuiModFlags.Shift), null, 1000000);
+        
+        _imGuiMenuManager.RegisterMenuItem(_menuItem);
     }
 
     public override void OnBeforeDrawImGuiWindow()
@@ -287,5 +294,11 @@ public class ConsoleWindow : ImGuiWindow
         }
 
         return InfoColor;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        _imGuiMenuManager.UnregisterMenuItem(_menuItem);
+        base.Dispose(disposing);
     }
 }

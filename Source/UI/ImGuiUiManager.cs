@@ -11,6 +11,7 @@ public class ImGuiUiManager : IDisposable
 {
     private readonly Sdl2Window _parentWindow;
     private readonly ImGuiInput _ImGuiInput;
+    private readonly Logger _logger;
 
     private readonly TextureManager _textureManager;
     private readonly Texture2D _backgroundTexture;
@@ -19,13 +20,17 @@ public class ImGuiUiManager : IDisposable
     private readonly List<ImGuiWindow> _defaultWindows = new();
 
     public ImGuiWindowManager ImGuiWindowManager { get; }
+    public ImGuiMenuManager ImGuiMenuManager { get; }
 
-    public ImGuiUiManager(TextureManager textureManager, Sdl2Window window)
+    public ImGuiUiManager(TextureManager textureManager, Sdl2Window window, Logger logger)
     {
         _textureManager = textureManager;
         _parentWindow = window;
-        ImGuiWindowManager = new ImGuiWindowManager();
+        _logger = logger;
         _ImGuiInput = new ImGuiInput();
+        
+        ImGuiWindowManager = new ImGuiWindowManager();
+        ImGuiMenuManager = new ImGuiMenuManager();
 
         ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
@@ -33,6 +38,7 @@ public class ImGuiUiManager : IDisposable
         _backgroundTextureImGuiRef = _textureManager.GetOrCreateImGuiTextureRefForTexture(_backgroundTexture);
 
         AddDefaultWindows();
+        AddDefaultMenuItems();
     }
 
     public void Update(InputSnapshot snapshot, double deltaSeconds)
@@ -72,12 +78,42 @@ public class ImGuiUiManager : IDisposable
 
     private void AddDefaultWindows()
     {
-        _defaultWindows.Add(new ConsoleWindow());
+        _defaultWindows.Add(new ConsoleWindow(ImGuiMenuManager));
 
         foreach (var window in _defaultWindows)
         {
             ImGuiWindowManager.RegisterWindow(window);
         }
+    }
+    
+    private void AddDefaultMenuItems()
+    {
+        ImGuiMenuManager.RegisterMenuItem(
+            new ImGuiMenuItem(
+                "File/Load Core",
+                () => _logger.LogError("Load Core Menu Not Implemented Yet"),
+                new ImGuiShortcut(ImGuiKey.O, ImGuiModFlags.Ctrl),
+                null,
+                -100000));
+        
+        ImGuiMenuManager.RegisterMenuItem(
+            new ImGuiMenuItem(
+                "File/Exit",
+                () => _parentWindow.Close(),
+                new ImGuiShortcut(ImGuiKey.F4, ImGuiModFlags.Alt),
+                null,
+                100000));
+        
+        ImGuiMenuManager.RegisterMenuItem(
+            new ImGuiMenuItem(
+                "Help/About",
+                () => ImGui.OpenPopup("About Vault"),
+                new ImGuiShortcut(ImGuiKey.F4, ImGuiModFlags.Alt),
+                null,
+                100000));
+        
+        ImGuiMenuManager.SetTopLevelMenuPriority("File", -1000000);
+        ImGuiMenuManager.SetTopLevelMenuPriority("Help", 1000000);
     }
 
     public void Dispose()
@@ -97,46 +133,11 @@ public class ImGuiUiManager : IDisposable
         {
             return;
         }
-
-        var openAboutPopup = false;
+        
         if(ImGui.BeginMainMenuBar())
         {
-            if(ImGui.BeginMenu("File"))
-            {
-                if(ImGui.MenuItem("Load Core", "CTRL+O")) { }
-
-                ImGui.Separator();
-                if(ImGui.MenuItem("Exit", "Alt-F4"))
-                {
-                    _parentWindow.Close();
-                }
-
-                ImGui.EndMenu();
-            }
-
-            if(ImGui.BeginMenu("Windows"))
-            {
-                ImGuiWindowManager.PopulateWindowMenu();
-                ImGui.EndMenu();
-            }
-
-            if(ImGui.BeginMenu("Help"))
-            {
-                if(ImGui.MenuItem("About"))
-                {
-                    openAboutPopup = true;
-                }
-
-
-                ImGui.EndMenu();
-            }
-
+            ImGuiMenuManager.PopulateMainMenu();
             ImGui.EndMainMenuBar();
-        }
-
-        if(openAboutPopup)
-        {
-            ImGui.OpenPopup("About Vault");
         }
 
         ProcessAboutPopup();

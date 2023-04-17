@@ -27,7 +27,9 @@ public class RendererOutputWindow : ImGuiWindow
     private Texture2D _textureToDraw => _textureToShowOnScreen ?? _testCardTexture;
 
     private bool _isShowingTestCard => _textureToDraw == _testCardTexture;
-
+    
+    public Vector2 ContentAreaTopLeft { get; set; }
+    public Vector2 ContentAreaSize { get; set; }
 
     public override string WindowTitle
     {
@@ -48,9 +50,7 @@ public class RendererOutputWindow : ImGuiWindow
 
     public override ImGuiWindowFlags WindowFlags => ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.MenuBar;
 
-    public override bool WindowAlwaysOpen => true;
-
-    public override WindowMenuItem? WindowsMenuItemData => null;
+    public override bool IsWindowOpen => true;
 
     public RendererOutputWindow(string windowName, TextureManager textureManager, ImGuiWindowManager imGuiWindowManager, VaultGui guiApplication)
     {
@@ -97,7 +97,7 @@ public class RendererOutputWindow : ImGuiWindow
     {
         var contentRectMin = ImGui.GetWindowContentRegionMin();
         var contentRectMax = ImGui.GetWindowContentRegionMax();
-
+        
         CheckForFullScreenDoubleClick(contentRectMin, contentRectMax);
 
         DrawScreenTexture(contentRectMax, contentRectMin, _textureToDraw);
@@ -163,6 +163,9 @@ public class RendererOutputWindow : ImGuiWindow
 
         //Add dummy for right/bottom padding so scroll bars appear at correct point
         ImGui.Dummy(new Vector2(imageSize.X + padding * 2.0f, padding));
+        
+        ContentAreaTopLeft = new Vector2(startX, startY);
+        ContentAreaSize = imageSize;
     }
 
     private void CheckForFullScreenDoubleClick(Vector2 contentRectMin, Vector2 contentRectMax)
