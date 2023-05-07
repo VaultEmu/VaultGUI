@@ -28,6 +28,8 @@ public class RendererOutputWindow : ImGuiWindow
 
     private bool _isShowingTestCard => _textureToDraw == _testCardTexture;
     
+    public override bool ShowCloseButton => false;
+    
     public Vector2 ContentAreaTopLeft { get; set; }
     public Vector2 ContentAreaSize { get; set; }
 
