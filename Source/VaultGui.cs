@@ -1,6 +1,7 @@
 using Veldrid;
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
+// ReSharper disable BitwiseOperatorOnEnumWithoutFlags
 
 namespace Vault;
 
@@ -13,6 +14,7 @@ public class VaultGui
     private readonly VaultCoreManager _vaultCoreManager;
     private readonly ImGuiUiManager _imGuiUiManager;
     private readonly VaultCoreSoftwareRendering _vaultCoreSoftwareRendering;
+    private readonly InputManager _inputManager;
 
     private SDL_DisplayMode[] _fullScreenDisplayMode;
     private WindowState? _nextWindowModeToSet;
@@ -41,9 +43,8 @@ public class VaultGui
             _logger.Log($"Vsync: {vsync} | Debug Graphics Device {debugGraphicsDevice}");
             
             var preferredBackend = VeldridStartup.GetPlatformDefaultBackend();
-
-            // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
-            Sdl2Native.SDL_Init(SDLInitFlags.Timer | SDLInitFlags.Video);
+            
+            Sdl2Native.SDL_Init(SDLInitFlags.Timer | SDLInitFlags.Video | SDLInitFlags.GameController);
 
             if(preferredBackend == GraphicsBackend.OpenGL ||
                preferredBackend == GraphicsBackend.OpenGLES)
@@ -77,9 +78,11 @@ public class VaultGui
             _timeProvider = new TimeProvider();
             _vaultCoreManager = new VaultCoreManager(_timeProvider, _logger);
             _vaultCoreSoftwareRendering = new VaultCoreSoftwareRendering(_logger, _vaultGuiGraphics.TextureManager, _imGuiUiManager, this);
-
+            _inputManager = new InputManager(_logger);
+            
             SetupCoreFeatureResolver();
             
+            _vaultCoreManager.OnCoreUpdated += OnCoreUpdate;
             _vaultCoreManager.RefreshAvailableVaultCores();
 
             //TEMP: Load core
@@ -105,6 +108,7 @@ public class VaultGui
         featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiWindowManager); //IImGuiWindowManager
         featureResolver.RegisterFeatureImplementation(_imGuiUiManager.ImGuiMenuManager); //IImGuiMenuManager
         featureResolver.RegisterFeatureImplementation(_vaultCoreSoftwareRendering); //ISoftwareRendering
+        featureResolver.RegisterFeatureImplementation(_inputManager); //IInputReceiver
     }
 
     private unsafe void CalculateFullScreenDisplayModeToUse()
@@ -158,13 +162,9 @@ public class VaultGui
                 }
 
                 //UPDATE
-                _imGuiUiManager.Update(snapshot, _timeProvider.RenderFrameDeltaTime);
-                _vaultCoreManager.Update();
-                
-                UpdateTitle();
+                PerFrameUpdate(snapshot);
                 
                 //RENDER
-                _timeProvider.OnFrameUpdate();
                 _vaultGuiGraphics.OnNewFrameStart();
                 _imGuiUiManager.GenerateImGuiRenderCalls();
                 _vaultGuiGraphics.Render();
@@ -177,6 +177,21 @@ public class VaultGui
         {
             ShutDown();
         }
+    }
+    
+    private void PerFrameUpdate(InputSnapshot snapshot)
+    {
+        _timeProvider.OnFrameUpdate();
+        
+        _imGuiUiManager.Update(snapshot, _timeProvider.RenderFrameDeltaTime);
+        _vaultCoreManager.Update();
+                
+        UpdateTitle();
+    }
+    
+    private void OnCoreUpdate(float deltaTime)
+    {
+        _inputManager.SnapshotDevices(deltaTime);
     }
     
     public void SetApplicationWindowState(WindowState windowState)

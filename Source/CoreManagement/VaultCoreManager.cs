@@ -11,6 +11,10 @@ public class VaultCoreManager
     
     public LoadedVaultCore? CurrentlyLoadedCore;
     
+    
+    public delegate void OnCoreUpdatedHandler(float deltaTime);
+    public event OnCoreUpdatedHandler? OnCoreUpdated; 
+
     public IReadOnlyList<VaultCoreData> AvailableCores => _vaultCoreLoader.AvailableCores; 
     
     public VaultCoreFeatureResolver FeatureResolver { get; }
@@ -70,6 +74,7 @@ public class VaultCoreManager
             //Update ever Frame
             vaultCore.Update((float)frameTime);
             _timeProvider.OnCoreUpdate((float)frameTime);
+            OnCoreUpdated?.Invoke((float)frameTime);
         }
         else
         {
@@ -81,6 +86,7 @@ public class VaultCoreManager
             {
                 vaultCore.Update(vaultCore.FixedUpdateRateMs);
                 _timeProvider.OnCoreUpdate(vaultCore.FixedUpdateRateMs);
+                OnCoreUpdated?.Invoke(vaultCore.FixedUpdateRateMs);
                 _updateAccum -= vaultCore.FixedUpdateRateMs;
                 
                 if(numUpdatesAllowed > 0)

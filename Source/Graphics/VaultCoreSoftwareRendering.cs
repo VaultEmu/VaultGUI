@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using ImGuiNET;
 using Vault.Input.Mouse;
 using VaultCore.Rendering;
 
@@ -125,7 +126,7 @@ public class VaultCoreSoftwareRendering : ISoftwareRendering
             throw new InvalidOperationException("Trying to use output that does not exist");
         }
         
-        return Vector2.Zero;
+        return output.OutputWindow.ContentAreaSize;
     }
 
     public bool GetMouseAbsolutePosition(RenderOutputHandle handle, IMouseDevice mouseDevice, out Vector2 mousePosOut)
@@ -140,8 +141,14 @@ public class VaultCoreSoftwareRendering : ISoftwareRendering
             throw new InvalidOperationException("Trying to use output that does not exist");
         }
         
-        mousePosOut = Vector2.Zero;
-        return false;
+        var mousePos = ImGui.GetMousePos();
+        
+        mousePosOut = new Vector2(
+            (mousePos.X - output.OutputWindow.ContentAreaTopLeft.X) / output.OutputWindow.ContentAreaSize.X,
+            (mousePos.Y - output.OutputWindow.ContentAreaTopLeft.Y) / output.OutputWindow.ContentAreaSize.Y);
+        
+        return mousePosOut.X >= 0.0f && mousePosOut.X <= 1.0f &&
+               mousePosOut.Y >= 0.0f && mousePosOut.Y <= 1.0f;
     }
 
     public void OnFrameReadyToDisplayOnOutput(RenderOutputHandle target, PixelData pixelData)
