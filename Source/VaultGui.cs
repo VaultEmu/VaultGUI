@@ -82,7 +82,7 @@ public class VaultGui
             
             SetupCoreFeatureResolver();
             
-            _vaultCoreManager.OnCoreUpdated += OnCoreUpdate;
+            _vaultCoreManager.OnPreCoreUpdated += OnPreCoreUpdate;
             _vaultCoreManager.RefreshAvailableVaultCores();
 
             //TEMP: Load core
@@ -189,7 +189,7 @@ public class VaultGui
         UpdateTitle();
     }
     
-    private void OnCoreUpdate(float deltaTime)
+    private void OnPreCoreUpdate(float deltaTime)
     {
         _inputManager.SnapshotDevices(deltaTime);
     }
