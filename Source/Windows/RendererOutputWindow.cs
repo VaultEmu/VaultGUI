@@ -166,7 +166,7 @@ public class RendererOutputWindow : ImGuiWindow
         //Add dummy for right/bottom padding so scroll bars appear at correct point
         ImGui.Dummy(new Vector2(imageSize.X + padding * 2.0f, padding));
         
-        ContentAreaTopLeft = new Vector2(startX, startY);
+        ContentAreaTopLeft = new Vector2(startX + ImGui.GetWindowPos().X, startY + ImGui.GetWindowPos().Y);
         ContentAreaSize = imageSize;
     }
 
@@ -195,6 +195,8 @@ public class RendererOutputWindow : ImGuiWindow
             ImGui.SetCursorPosX(ImGui.GetStyle().WindowPadding.X);
             if(ImGui.BeginMenu("Display Options..."))
             {
+                ImGui.MenuItem("Full Screen", null, ref _switchFullScreenMode);
+                
                 if(ImGui.BeginMenu("Scaling"))
                 {
                     ImGui.MenuItem("Auto Scale", null, ref _autoScale);
