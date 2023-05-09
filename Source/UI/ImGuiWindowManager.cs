@@ -32,6 +32,12 @@ public class ImGuiWindowManager : IImGuiWindowManager
         {
             throw new InvalidOperationException("Trying to unregister window that is not registered");
         }
+        
+        //Should the full screen window become closed, exit full screen view
+        if(_fullscreenWindow != null && _fullscreenWindow == window)
+        {
+            ClearFullscreenWindow();
+        }
 
         _windows.Remove(window);
     }
@@ -90,6 +96,9 @@ public class ImGuiWindowManager : IImGuiWindowManager
             var fullWindowString = $"{windowName}###{windowID}";
 
             var viewport = ImGui.GetMainViewport();
+            
+            ImGui.SetNextWindowPos(new Vector2(viewport.WorkSize.X * 0.5f - 300.0f, viewport.WorkSize.Y * 0.5f - 200.0f), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSize(new Vector2(600, 400), ImGuiCond.FirstUseEver);
 
             if(IsAnyWindowFullScreen)
             {
@@ -104,11 +113,7 @@ public class ImGuiWindowManager : IImGuiWindowManager
                 windowFlags &= ~ImGuiWindowFlags.MenuBar;
                 fullWindowString += "_FullScreen";
             }
-
-
-            ImGui.SetNextWindowPos(new Vector2(viewport.WorkSize.X * 0.5f - 300.0f, viewport.WorkSize.Y * 0.5f - 200.0f), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowSize(new Vector2(600, 400), ImGuiCond.FirstUseEver);
-
+            
             window.OnBeforeDrawImGuiWindow();
 
             bool windowNotCollapsed;
