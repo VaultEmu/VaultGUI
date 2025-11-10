@@ -73,21 +73,18 @@ public class VaultGui
             CalculateFullScreenDisplayModeToUse();
             
             //Create Main Components
-            _vaultGuiGraphics = new VaultGUIGraphics(_logger, _window, graphicDeviceOptions, preferredBackend);
-            _imGuiUiManager = new ImGuiUiManager(_vaultGuiGraphics.TextureManager, _window, _logger);
             _timeProvider = new TimeProvider();
-            _vaultCoreManager = new VaultCoreManager(_timeProvider, _logger);
-            _vaultCoreSoftwareRendering = new VaultCoreSoftwareRendering(_logger, _vaultGuiGraphics.TextureManager, _imGuiUiManager, this);
             _inputManager = new InputManager(_logger);
+            _vaultCoreManager = new VaultCoreManager(_timeProvider, _logger);
+            _vaultGuiGraphics = new VaultGUIGraphics(_logger, _window, graphicDeviceOptions, preferredBackend);
+            _imGuiUiManager = new ImGuiUiManager(_vaultGuiGraphics.TextureManager, _window, _vaultCoreManager, _logger);
+            _vaultCoreSoftwareRendering = new VaultCoreSoftwareRendering(_logger, _vaultGuiGraphics.TextureManager, _imGuiUiManager, this);
+          
             
             SetupCoreFeatureResolver();
             
             _vaultCoreManager.OnPreCoreUpdated += OnPreCoreUpdate;
             _vaultCoreManager.RefreshAvailableVaultCores();
-
-            //TEMP: Load core
-            var exampleCoreData = _vaultCoreManager.AvailableCores.First(x => x.CoreName == "Example Core");
-            _vaultCoreManager.LoadVaultCore(exampleCoreData);
 
             _logger.Log("Initialising Finished");
         }

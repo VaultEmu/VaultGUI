@@ -30,9 +30,9 @@
       <PackageReference Include="NLog" Version="5.1.4" />
       <PackageReference Include="StbImageSharp" Version="2.27.13" />
       <PackageReference Include="VaultCore.CoreAPI" Version="0.1.7" />
-      <PackageReference Include="VaultCore.ImGuiWindowsAPI" Version="0.1.24" />
-      <PackageReference Include="VaultCore.Input" Version="0.1.2" />
-      <PackageReference Include="VaultCore.Rendering" Version="0.1.19" />
+      <PackageReference Include="VaultCore.ImGuiWindowsAPI" Version="0.1.30" />
+      <PackageReference Include="VaultCore.Input" Version="0.1.10" />
+      <PackageReference Include="VaultCore.Rendering" Version="0.1.29" />
       <PackageReference Include="Veldrid" Version="4.9.0" />
       <PackageReference Include="Veldrid.SPIRV" Version="1.0.15" />
       <PackageReference Include="Veldrid.StartupUtilities" Version="4.9.0" />

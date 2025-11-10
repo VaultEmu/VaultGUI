@@ -12,6 +12,7 @@ public class ImGuiUiManager : IDisposable
     private readonly Sdl2Window _parentWindow;
     private readonly ImGuiInput _ImGuiInput;
     private readonly Logger _logger;
+    private readonly VaultCoreManager _vaultCoreManager;
 
     private readonly TextureManager _textureManager;
     private readonly Texture2D _backgroundTexture;
@@ -22,10 +23,11 @@ public class ImGuiUiManager : IDisposable
     public ImGuiWindowManager ImGuiWindowManager { get; }
     public ImGuiMenuManager ImGuiMenuManager { get; }
 
-    public ImGuiUiManager(TextureManager textureManager, Sdl2Window window, Logger logger)
+    public ImGuiUiManager(TextureManager textureManager, Sdl2Window window, VaultCoreManager vaultCoreManager, Logger logger)
     {
         _textureManager = textureManager;
         _parentWindow = window;
+        _vaultCoreManager = vaultCoreManager;
         _logger = logger;
         _ImGuiInput = new ImGuiInput();
         
@@ -90,8 +92,26 @@ public class ImGuiUiManager : IDisposable
     {
         ImGuiMenuManager.RegisterMenuItem(
             new ImGuiMenuItem(
-                "File/Load Core",
-                () => _logger.LogError("Load Core Menu Not Implemented Yet"),
+                "File/Load Example Core",
+                () =>
+                {
+                    //TEMP: Load example core directly
+                    var exampleCoreData = _vaultCoreManager.AvailableCores.First(x => x.CoreName == "Example Core");
+                    _vaultCoreManager.LoadVaultCore(exampleCoreData);
+                },
+                new ImGuiShortcut(ImGuiKey.O, ImGuiModFlags.Ctrl),
+                null,
+                -100000));
+        
+        ImGuiMenuManager.RegisterMenuItem(
+            new ImGuiMenuItem(
+                "File/Load Second Example Core",
+                () =>
+                {
+                    //TEMP: Load example core directly
+                    var exampleCoreData = _vaultCoreManager.AvailableCores.First(x => x.CoreName == "Example Other Core");
+                    _vaultCoreManager.LoadVaultCore(exampleCoreData);
+                },
                 new ImGuiShortcut(ImGuiKey.O, ImGuiModFlags.Ctrl),
                 null,
                 -100000));

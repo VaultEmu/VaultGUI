@@ -113,7 +113,7 @@ public class InputManager : IInputReceiver
             return;
         }
 
-        gamepad.UpdateDigitalButtonDownForNextSnapShot(gamepadButton.Value,
+        gamepad.UpdateDigitalButtonDownForNextSnapShot(gamepadButton.Value, 
             controllerButtonEvent.type == (int)SDL_EventType.ControllerButtonDown);
     }
 
@@ -149,7 +149,7 @@ public class InputManager : IInputReceiver
         {
             scrollDelta *= -1.0f;
         }
-
+        
         _mouseDevice.UpdateScrollForNextSnapShot(scrollDelta);
     }
 
