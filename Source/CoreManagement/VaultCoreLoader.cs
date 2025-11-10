@@ -29,7 +29,7 @@ public class VaultCoreLoader
         }
     }
     
-    private static string CorePluginFolder => @"D:\DEV\Personal\VaultEmu\VaultCores\PublishedCores";//Path.Combine(AppContext.BaseDirectory, "Cores");
+    private static string CorePluginFolder => Path.Combine(AppContext.BaseDirectory, "Cores");
     
     private readonly List<VaultCoreData> _availableCores = new List<VaultCoreData>();
     
@@ -44,11 +44,12 @@ public class VaultCoreLoader
     
     public void RefreshAvailableVaultCores()
     {
-        _logger.Log("Scanning for Emu Cores...");
+        _logger.Log($"Scanning for Emu Cores in '{CorePluginFolder}'...");
         _availableCores.Clear();
         
         if(Directory.Exists(CorePluginFolder) == false)
         {
+            _logger.LogWarning($"Core Folder missing - Please Create Folder '{CorePluginFolder}' and add cores");
             return;
         }
         
@@ -147,6 +148,11 @@ public class VaultCoreLoader
             }
             
             _availableCores.AddRange(coresFound);
+        }
+        
+        if(_availableCores.Count == 0)
+        {
+            _logger.LogWarning($"No Cores Found - Please add cores to {CorePluginFolder}");
         }
     }
     

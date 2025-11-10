@@ -9,6 +9,7 @@ public readonly struct VaultCoreData
     public readonly string CoreClassName;
     public readonly string[] CoreFeaturesUsed;
     public readonly string DLLPath;
+    public readonly bool IsValid;
 
     public VaultCoreData(string coreName, string systemName, string version, string description, 
         string dllPath, string coreClassName, string[] coreFeaturesUsed)
@@ -20,5 +21,6 @@ public readonly struct VaultCoreData
         DLLPath = dllPath;
         CoreClassName = coreClassName;
         CoreFeaturesUsed = coreFeaturesUsed;
+        IsValid = File.Exists(DLLPath);
     }
 }

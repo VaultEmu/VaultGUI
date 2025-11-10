@@ -96,7 +96,12 @@ public class ImGuiUiManager : IDisposable
                 () =>
                 {
                     //TEMP: Load example core directly
-                    var exampleCoreData = _vaultCoreManager.AvailableCores.First(x => x.CoreName == "Example Core");
+                    var exampleCoreData = _vaultCoreManager.AvailableCores.FirstOrDefault(x => x.CoreName == "Example Core");
+                    if(!exampleCoreData.IsValid)
+                    {
+                        _logger.LogError("Unable to load Example Core (Is the Example Core Build and placed in a 'Cores' Folder next to the exe?");
+                        return;
+                    }
                     _vaultCoreManager.LoadVaultCore(exampleCoreData);
                 },
                 new ImGuiShortcut(ImGuiKey.O, ImGuiModFlags.Ctrl),
@@ -108,8 +113,13 @@ public class ImGuiUiManager : IDisposable
                 "File/Load Second Example Core",
                 () =>
                 {
-                    //TEMP: Load example core directly
-                    var exampleCoreData = _vaultCoreManager.AvailableCores.First(x => x.CoreName == "Example Other Core");
+                    //TEMP: Load example core directly (This one just logs and tests having multiple cores in a single dll)
+                    var exampleCoreData = _vaultCoreManager.AvailableCores.FirstOrDefault(x => x.CoreName == "Example Other Core");
+                    if(!exampleCoreData.IsValid)
+                    {
+                        _logger.LogError("Unable to load Example Other Core (Is the Example Core Build and placed in a 'Cores' Folder next to the exe?");
+                        return;
+                    }
                     _vaultCoreManager.LoadVaultCore(exampleCoreData);
                 },
                 new ImGuiShortcut(ImGuiKey.O, ImGuiModFlags.Ctrl),
